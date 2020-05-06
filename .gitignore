@@ -1,0 +1,8 @@
+/bin/*
+/obj/*
+doxygen
+*.vgm
+*.dll
+*.exe
+imgui.ini
+mmlgui
