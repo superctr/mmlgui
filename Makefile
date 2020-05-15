@@ -62,7 +62,9 @@ IMGUI_OBJS = \
 
 MMLGUI_OBJS = \
 	$(IMGUI_OBJS) \
-	$(OBJ)/main.o
+	$(OBJ)/main.o \
+	$(OBJ)/window.o \
+	$(OBJ)/main_window.o \
 
 $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
