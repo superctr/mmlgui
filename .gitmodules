@@ -2,3 +2,6 @@
 	path = imgui
 	url = https://github.com/Flix01/imgui
 	branch = imgui_with_addons
+[submodule "ImGuiColorTextEdit"]
+	path = ImGuiColorTextEdit
+	url = https://github.com/superctr/ImGuiColorTextEdit
