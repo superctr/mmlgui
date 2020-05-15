@@ -56,7 +56,8 @@ IMGUI_OBJS = \
 	$(IMGUI_OBJ)/imgui_widgets.o \
 	$(IMGUI_OBJ)/examples/imgui_impl_glfw.o \
 	$(IMGUI_OBJ)/examples/imgui_impl_opengl3.o \
-	$(IMGUI_OBJ)/examples/libs/gl3w/GL/gl3w.o
+	$(IMGUI_OBJ)/examples/libs/gl3w/GL/gl3w.o \
+	$(IMGUI_OBJ)/addons/imguifilesystem/imguifilesystem.o
 
 IMGUI_CTE_OBJS = \
 	$(IMGUI_CTE_OBJ)/TextEditor.o \
