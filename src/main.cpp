@@ -137,7 +137,7 @@ int main(int, char**)
 	ImVec4 clear_color = ImVec4(0.06f, 0.11f, 0.20f, 1.00f);
 
 	// Main loop
-	while (!glfwWindowShouldClose(window))
+	while (main_window.get_close_request() != Window::CLOSE_OK)
 	{
 		// Poll and handle events (inputs, window resize, etc.)
 		// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -151,7 +151,17 @@ int main(int, char**)
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
+		if(main_window.get_close_request() == Window::CLOSE_NOT_OK)
+		{
+			main_window.clear_close_request();
+			glfwSetWindowShouldClose(window, 0);
+		}
+
+		if(glfwWindowShouldClose(window))
+			main_window.close_request_all();
+
 		// run window manager
+		Window::modal_open = false;
 		main_window.display_all();
 
 		// Rendering

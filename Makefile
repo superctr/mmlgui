@@ -1,6 +1,8 @@
+IMGUI_CTE_SRC = ImGuiColorTextEdit
+IMGUI_CTE_OBJ = obj/$(IMGUI_CTE_SRC)
 IMGUI_SRC = imgui
+IMGUI_OBJ = obj/$(IMGUI_SRC)
 SRC = src
-IMGUI_OBJ = obj/imgui
 OBJ = obj
 
 CFLAGS = -Wall
@@ -21,7 +23,7 @@ endif
 ##---------------------------------------------------------------------
 ## BUILD FLAGS PER PLATFORM
 ##---------------------------------------------------------------------
-CFLAGS += -I$(IMGUI_SRC) -I$(IMGUI_SRC)/examples -I$(IMGUI_SRC)/examples/libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W
+CFLAGS += -I$(IMGUI_SRC) -I$(IMGUI_SRC)/examples -I$(IMGUI_SRC)/examples/libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(IMGUI_CTE_SRC)
 
 ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
@@ -56,17 +58,26 @@ IMGUI_OBJS = \
 	$(IMGUI_OBJ)/examples/imgui_impl_opengl3.o \
 	$(IMGUI_OBJ)/examples/libs/gl3w/GL/gl3w.o
 
+IMGUI_CTE_OBJS = \
+	$(IMGUI_CTE_OBJ)/TextEditor.o \
+
 ##---------------------------------------------------------------------
 ## IMGUI specific stuff ends
 ##---------------------------------------------------------------------
 
 MMLGUI_OBJS = \
 	$(IMGUI_OBJS) \
+	$(IMGUI_CTE_OBJS) \
 	$(OBJ)/main.o \
 	$(OBJ)/window.o \
 	$(OBJ)/main_window.o \
+	$(OBJ)/editor_window.o \
 
 $(OBJ)/%.o: $(SRC)/%.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(CFLAGS) -c $< -o $@
+
+$(IMGUI_CTE_OBJ)/%.o: $(IMGUI_CTE_SRC)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) -c $< -o $@
 

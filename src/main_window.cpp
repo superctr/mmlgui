@@ -1,5 +1,6 @@
 #include "imgui.h"
 #include "main_window.h"
+#include "editor_window.h"
 
 //=====================================================================
 FPS_Overlay::FPS_Overlay()
@@ -42,6 +43,7 @@ void FPS_Overlay::display()
 Main_Window::Main_Window()
 {
 	children.push_back(std::make_shared<FPS_Overlay>());
+	children.push_back(std::make_shared<Editor_Window>());
 }
 
 void Main_Window::display()
@@ -59,6 +61,10 @@ void Main_Window::display()
 			{
 				children.push_back(std::make_shared<FPS_Overlay>());
 			}
+		}
+		if (ImGui::MenuItem("New MML...", nullptr, nullptr))
+		{
+			children.push_back(std::make_shared<Editor_Window>());
 		}
 		ImGui::EndPopup();
 	}
