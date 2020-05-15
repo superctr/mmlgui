@@ -6,7 +6,7 @@ SRC = src
 OBJ = obj
 
 CFLAGS = -Wall
-LDFLAGS =
+LDFLAGS = -Lvgm-audio -Lvgm-emu
 
 ifneq ($(RELEASE),1)
 CFLAGS += -g

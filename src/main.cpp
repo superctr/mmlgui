@@ -1,3 +1,6 @@
+// this include is just a test to ensure that libvgm headers are found
+#include <vgm/audio/AudioStream.h>
+
 #include "main_window.h"
 
 // dear imgui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
