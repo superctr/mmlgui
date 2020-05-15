@@ -18,6 +18,8 @@ endif
 LDFLAGS_TEST = -lcppunit
 ifeq ($(OS),Windows_NT)
 	LDFLAGS += -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic
+else
+	UNAME_S := $(shell uname -s)
 endif
 
 ##---------------------------------------------------------------------

@@ -22,7 +22,7 @@ If libvgm is not available on your system, you need to install it manually. Exam
 	mkdir build && cd build
 	cmake ..
 	make
-	make install
+	sudo make install
 
 ##### Windows (MSYS2)
 The `CMAKE_INSTALL_PREFIX` should of course match where your MSYS2/MinGW install folder is.
