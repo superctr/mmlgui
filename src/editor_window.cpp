@@ -164,7 +164,7 @@ void Editor_Window::display()
 	}
 
 	ImGui::Spacing();
-	ImGui::Text("%6d/%-6d %6d lines  | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
+	ImGui::Text("%6d/%-6d %6d line%c  | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), (editor.GetTotalLines() == 1) ? ' ' : 's',
 		editor.IsOverwrite() ? "Ovr" : "Ins");
 
 	ImGui::End();
