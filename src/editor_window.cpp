@@ -83,20 +83,20 @@ void Editor_Window::display()
 			ImGui::Separator();
 
 			if (ImGui::MenuItem("Undo", "Ctrl+Z or Alt+Backspace", nullptr, !ro && editor.CanUndo()))
-				editor.Undo();
+				editor.Undo(), modified = 1;
 			if (ImGui::MenuItem("Redo", "Ctrl+Y", nullptr, !ro && editor.CanRedo()))
-				editor.Redo();
+				editor.Redo(), modified = 1;
 
 			ImGui::Separator();
 
 			if (ImGui::MenuItem("Cut", "Ctrl+X", nullptr, !ro && editor.HasSelection()))
-				editor.Cut();
+				editor.Cut(), modified = 1;
 			if (ImGui::MenuItem("Copy", "Ctrl+C", nullptr, editor.HasSelection()))
 				editor.Copy();
 			if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
-				editor.Delete();
+				editor.Delete(), modified = 1;
 			if (ImGui::MenuItem("Paste", "Ctrl+V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-				editor.Paste();
+				editor.Paste(), modified = 1;
 
 			ImGui::Separator();
 
@@ -124,7 +124,7 @@ void Editor_Window::display()
 	editor.Render(window_id.c_str());
 
 	if(editor.IsTextChanged())
-		modified |= 1;
+		modified = 1;
 
 	ImGui::EndChild();
 
