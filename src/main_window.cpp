@@ -10,6 +10,7 @@ FPS_Overlay::FPS_Overlay()
 
 void FPS_Overlay::display()
 {
+	static bool show_metrics = false;
 	const float DISTANCE = 10.0f;
 	static int corner = 0;
 	ImGuiIO& io = ImGui::GetIO();
@@ -27,16 +28,23 @@ void FPS_Overlay::display()
 		ImGui::Text("FPS: %.2f", ImGui::GetIO().Framerate);
 		if (ImGui::BeginPopupContextWindow())
 		{
-			if (ImGui::MenuItem("Custom",       NULL, corner == -1)) corner = -1;
-			if (ImGui::MenuItem("Top-left",     NULL, corner == 0)) corner = 0;
-			if (ImGui::MenuItem("Top-right",    NULL, corner == 1)) corner = 1;
-			if (ImGui::MenuItem("Bottom-left",  NULL, corner == 2)) corner = 2;
-			if (ImGui::MenuItem("Bottom-right", NULL, corner == 3)) corner = 3;
-            if (ImGui::MenuItem("Close")) active = false;
+			if (ImGui::MenuItem("Debug metrics",    NULL, show_metrics)) show_metrics ^= 1;
+			if (ImGui::BeginMenu("Overlay"))
+			{
+				if (ImGui::MenuItem("Custom",       NULL, corner == -1)) corner = -1;
+				if (ImGui::MenuItem("Top-left",     NULL, corner == 0)) corner = 0;
+				if (ImGui::MenuItem("Top-right",    NULL, corner == 1)) corner = 1;
+				if (ImGui::MenuItem("Bottom-left",  NULL, corner == 2)) corner = 2;
+				if (ImGui::MenuItem("Bottom-right", NULL, corner == 3)) corner = 3;
+				if (ImGui::MenuItem("Close")) active = false;
+				ImGui::EndMenu();
+			}
 			ImGui::EndPopup();
 		}
 	}
 	ImGui::End();
+	if(show_metrics)
+		ImGui::ShowMetricsWindow(&show_metrics);
 }
 
 //=====================================================================
@@ -51,7 +59,7 @@ void Main_Window::display()
 	if (ImGui::BeginPopupContextVoid())
 	{
 		bool overlay_active = find_child(WT_FPS_OVERLAY) != children.end();
-		if (ImGui::MenuItem("Show FPS/Version", nullptr, overlay_active))
+		if (ImGui::MenuItem("Show FPS Overlay", nullptr, overlay_active))
 		{
 			if(overlay_active)
 			{

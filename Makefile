@@ -80,19 +80,19 @@ MMLGUI_OBJS = \
 
 $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CFLAGS) -MMD -c $< -o $@
 
 $(IMGUI_CTE_OBJ)/%.o: $(IMGUI_CTE_SRC)/%.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CFLAGS) -MMD -c $< -o $@
 
 $(IMGUI_OBJ)/%.o: $(IMGUI_SRC)/%.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CFLAGS) -MMD -c $< -o $@
 
 $(IMGUI_OBJ)/%.o: $(IMGUI_SRC)/%.c
 	@mkdir -p $(@D)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -MMD -c $< -o $@
 
 all: mmlgui
 
@@ -107,7 +107,9 @@ endif
 
 clean:
 	rm -rf $(OBJ)
-	make -C ctrmml clean
+	$(MAKE) -C ctrmml clean
 	rm -rf $(CTRMML_LIB)
 
 .PHONY: all
+
+-include $(OBJ)/*.d $(IMGUI_CTE_OBJ)/*.d $(IMGUI_OBJ)/*.d

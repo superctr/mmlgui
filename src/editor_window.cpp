@@ -6,11 +6,11 @@
 		2. syntax highlighting for MML
 
 	bugs in the editor (to be fixed in my fork of ImGuiColorTextEdit)
-		1. numpad enter doesn't work
-		2. highlighted area when doublclicking includes an extra space
-		3. highlighted area when doubleclicking doesn't take account punctuation
+		1. highlighted area when doubleclicking doesn't take account punctuation
 			(based on the code, This should hopefully automatically be fixed when
 			 MML highlighting is done)
+		2. data copied to clipboard from mmlgui has UNIX-linebreaks regardless of OS.
+		   This may break some windows tools (such as Notepad.exe)
 
 	"bugs" in the imgui addons branch (maybe can be fixed locally and upstreamed?)
 		1. file dialog doesn't automatically focus the filename.
@@ -341,6 +341,9 @@ int Editor_Window::load_file(const char* fn)
 
 int Editor_Window::save_file(const char* fn)
 {
+	// If we don't set ios::binary, the runtime will
+	// convert linebreaks to the OS native format.
+	// I think it is OK to keep this behavior for now.
 	auto t = std::ofstream(fn);
 	if (t.good())
 	{
