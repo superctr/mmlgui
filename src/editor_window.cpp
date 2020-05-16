@@ -89,10 +89,10 @@ void Editor_Window::display()
 
 			ImGui::Separator();
 
-			if (ImGui::MenuItem("Copy", "Ctrl+C", nullptr, editor.HasSelection()))
-				editor.Copy();
 			if (ImGui::MenuItem("Cut", "Ctrl+X", nullptr, !ro && editor.HasSelection()))
 				editor.Cut();
+			if (ImGui::MenuItem("Copy", "Ctrl+C", nullptr, editor.HasSelection()))
+				editor.Copy();
 			if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
 				editor.Delete();
 			if (ImGui::MenuItem("Paste", "Ctrl+V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
@@ -120,10 +120,14 @@ void Editor_Window::display()
 	}
 
 	ImGui::BeginChild("editor view", ImVec2(0, -ImGui::GetFrameHeight())); // Leave room for 1 line below us
+
 	editor.Render(window_id.c_str());
+
 	if(editor.IsTextChanged())
 		modified |= 1;
+
 	ImGui::EndChild();
+
 	ImGui::Text("%6d/%-6d %6d lines  | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
 		editor.IsOverwrite() ? "Ovr" : "Ins");
 
