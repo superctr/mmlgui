@@ -2,11 +2,12 @@ IMGUI_CTE_SRC = ImGuiColorTextEdit
 IMGUI_CTE_OBJ = obj/$(IMGUI_CTE_SRC)
 IMGUI_SRC = imgui
 IMGUI_OBJ = obj/$(IMGUI_SRC)
+CTRMML_LIB = ctrmml/lib
 SRC = src
 OBJ = obj
 
 CFLAGS = -Wall
-LDFLAGS = -Lvgm-audio -Lvgm-emu
+LDFLAGS =
 
 ifneq ($(RELEASE),1)
 CFLAGS += -g
@@ -26,6 +27,7 @@ endif
 ## BUILD FLAGS PER PLATFORM
 ##---------------------------------------------------------------------
 CFLAGS += -I$(IMGUI_SRC) -I$(IMGUI_SRC)/examples -I$(IMGUI_SRC)/examples/libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(IMGUI_CTE_SRC)
+LDFLAGS += -L$(CTRMML_LIB) -lvgm-audio -lvgm-emu -lctrmml
 
 ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
@@ -94,7 +96,10 @@ $(IMGUI_OBJ)/%.o: $(IMGUI_SRC)/%.c
 
 all: mmlgui
 
-mmlgui: $(MMLGUI_OBJS)
+$(CTRMML_LIB)/libctrmml.a:
+	make -C ctrmml lib RELEASE=$(RELEASE)
+
+mmlgui: $(MMLGUI_OBJS) $(CTRMML_LIB)/libctrmml.a
 	$(CXX) $(MMLGUI_OBJS) $(LDFLAGS) -o $@
 ifeq ($(OS),Windows_NT)
 	cp `which glfw3.dll` $(@D)
@@ -102,5 +107,7 @@ endif
 
 clean:
 	rm -rf $(OBJ)
+	make -C ctrmml clean
+	rm -rf $(CTRMML_LIB)
 
 .PHONY: all
