@@ -8,100 +8,108 @@
 	bugs in the editor (to be fixed in my fork of ImGuiColorTextEdit)
 		1. numpad enter doesn't work
 		2. highlighted area when doublclicking includes an extra space
+		3. highlighted area when doubleclicking doesn't take account punctuation
+			(based on the code, This should hopefully automatically be fixed when
+			 MML highlighting is done)
+
+	"bugs" in the imgui addons branch (maybe can be fixed locally and upstreamed?)
+		1. file dialog doesn't automatically focus the filename.
+		2. file dialog has no keyboard controls at all :/
 */
 
 #include "editor_window.h"
 
 #include "imgui.h"
+
+#include <GLFW/glfw3.h>
 #include <string>
 #include <cstring>
 #include <fstream>
 
+enum Flags
+{
+	MODIFIED		= 1<<0,
+	FILENAME_SET	= 1<<1,
+	NEW				= 1<<2,
+	OPEN			= 1<<3,
+	SAVE			= 1<<4,
+	SAVE_AS			= 1<<5,
+	DIALOG			= 1<<6,
+	IGNORE_WARNING	= 1<<7
+};
+
 Editor_Window::Editor_Window()
 	: editor()
-	, modified(false)
 	, filename(default_filename)
-	, filename_set(false)
-	, clear_req(false)
-	, load_req(false)
-	, save_req(false)
-	, save_as_req(false)
-	, new_dialog(false)
-	, ignore_warning(false)
+	, flag(false)
 {
 	editor.SetColorizerEnable(false); // disable syntax highlighting for now
 }
 
 void Editor_Window::display()
 {
-	bool quit_flag = true;
+	bool keep_open = true;
 
 	std::string window_id;
 	window_id = get_display_filename();
-	if(modified)
+	if(test_flag(MODIFIED))
 		window_id += "*";
 	window_id += "###Editor" + std::to_string(id);
 
 	auto cpos = editor.GetCursorPosition();
-	ImGui::Begin(window_id.c_str(), &quit_flag, /*ImGuiWindowFlags_HorizontalScrollbar |*/ ImGuiWindowFlags_MenuBar);
+	ImGui::Begin(window_id.c_str(), &keep_open, /*ImGuiWindowFlags_HorizontalScrollbar |*/ ImGuiWindowFlags_MenuBar);
 	ImGui::SetWindowSize(ImVec2(800, 600), ImGuiCond_Once);
+
 	if (ImGui::BeginMenuBar())
 	{
 		if (ImGui::BeginMenu("File"))
 		{
-			if (ImGui::MenuItem("New")) //TODO: CTRL+N
-			{
-				clear_req = true;
-			}
-			if (ImGui::MenuItem("Open...")) //TODO: CTRL+O
-			{
-				load_req = true;
-				new_dialog = true;
-			}
-			if (ImGui::MenuItem("Save", nullptr, nullptr, filename_set)) //TODO: CTRL+S
-			{
-				save_req = true;
-				new_dialog = true;
-			}
-			if (ImGui::MenuItem("Save As...")) //TODO: CTRL+ALT+S
-			{
-				save_req = true;
-				save_as_req = true;
-				new_dialog = true;
-			}
-			if (ImGui::MenuItem("Quit"))  //TODO :CTRL+W
-			{
-				quit_flag = false;
-			}
+			if (ImGui::MenuItem("New", "Ctrl+N"))
+				set_flag(NEW);
+			if (ImGui::MenuItem("Open...", "Ctrl+O"))
+				set_flag(OPEN|DIALOG);
+			if (ImGui::MenuItem("Save", "Ctrl+S", nullptr, test_flag(FILENAME_SET)))
+				set_flag(SAVE|DIALOG);
+			if (ImGui::MenuItem("Save As...", "Ctrl+Alt+S"))
+				set_flag(SAVE|SAVE_AS|DIALOG);
+			if (ImGui::MenuItem("Close", "Ctrl+W"))
+				keep_open = false;
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("Edit"))
 		{
 			bool ro = editor.IsReadOnly();
-			if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
-				editor.SetReadOnly(ro);
-			ImGui::Separator();
 
 			if (ImGui::MenuItem("Undo", "Ctrl+Z or Alt+Backspace", nullptr, !ro && editor.CanUndo()))
-				editor.Undo(), modified = 1;
+				editor.Undo(), set_flag(MODIFIED);
 			if (ImGui::MenuItem("Redo", "Ctrl+Y", nullptr, !ro && editor.CanRedo()))
-				editor.Redo(), modified = 1;
+				editor.Redo(), set_flag(MODIFIED);
 
 			ImGui::Separator();
 
 			if (ImGui::MenuItem("Cut", "Ctrl+X", nullptr, !ro && editor.HasSelection()))
-				editor.Cut(), modified = 1;
+				editor.Cut(), set_flag(MODIFIED);
 			if (ImGui::MenuItem("Copy", "Ctrl+C", nullptr, editor.HasSelection()))
 				editor.Copy();
 			if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
-				editor.Delete(), modified = 1;
+				editor.Delete(), set_flag(MODIFIED);
+
+			GLFWerrorfun prev_error_callback = glfwSetErrorCallback(NULL); // disable clipboard error messages...
+
 			if (ImGui::MenuItem("Paste", "Ctrl+V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-				editor.Paste(), modified = 1;
+				editor.Paste(), set_flag(MODIFIED);
+
+			glfwSetErrorCallback(prev_error_callback);
 
 			ImGui::Separator();
 
 			if (ImGui::MenuItem("Select All", "Ctrl+A", nullptr))
 				editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
+
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+				editor.SetReadOnly(ro);
 
 			ImGui::EndMenu();
 		}
@@ -119,21 +127,49 @@ void Editor_Window::display()
 		ImGui::EndMenuBar();
 	}
 
-	ImGui::BeginChild("editor view", ImVec2(0, -ImGui::GetFrameHeight())); // Leave room for 1 line below us
+	// focus on the text editor rather than the "frame"
+	if (ImGui::IsWindowFocused())
+		ImGui::SetNextWindowFocus();
 
-	editor.Render(window_id.c_str());
+	GLFWerrorfun prev_error_callback = glfwSetErrorCallback(NULL); // disable clipboard error messages...
+
+	editor.Render("EditorArea", ImVec2(0, -ImGui::GetFrameHeight()));
+
+	glfwSetErrorCallback(prev_error_callback);
 
 	if(editor.IsTextChanged())
-		modified = 1;
+		set_flag(MODIFIED);
 
-	ImGui::EndChild();
+	if (ImGui::IsWindowFocused() | editor.IsWindowFocused())
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		auto isOSX = io.ConfigMacOSXBehaviors;
+		auto alt = io.KeyAlt;
+		auto ctrl = io.KeyCtrl;
+		auto shift = io.KeyShift;
+		auto super = io.KeySuper;
+		auto isShortcut = (isOSX ? (super && !ctrl) : (ctrl && !super)) && !alt && !shift;
+		auto isAltShortcut = (isOSX ? (super && !ctrl) : (ctrl && !super)) && alt && !shift;
 
+		if (isShortcut && ImGui::IsKeyPressed(GLFW_KEY_N))
+			set_flag(NEW);
+		else if (isShortcut && ImGui::IsKeyPressed(GLFW_KEY_O))
+			set_flag(OPEN|DIALOG);
+		else if (isShortcut && ImGui::IsKeyPressed(GLFW_KEY_S))
+			set_flag(SAVE|DIALOG);
+		else if (isAltShortcut && ImGui::IsKeyPressed(GLFW_KEY_S))
+			set_flag(SAVE|SAVE_AS|DIALOG);
+		else if (isShortcut && ImGui::IsKeyPressed(GLFW_KEY_W))
+			keep_open = false;
+	}
+
+	ImGui::Spacing();
 	ImGui::Text("%6d/%-6d %6d lines  | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
 		editor.IsOverwrite() ? "Ovr" : "Ins");
 
 	ImGui::End();
 
-	if(!quit_flag)
+	if(!keep_open)
 		close_request_all();
 
 	if(get_close_request() == Window::CLOSE_IN_PROGRESS && !modal_open)
@@ -147,7 +183,7 @@ void Editor_Window::display()
 
 void Editor_Window::close_request()
 {
-	if(modified)
+	if(test_flag(MODIFIED))
 		close_req_state = Window::CLOSE_IN_PROGRESS;
 	else
 		close_req_state = Window::CLOSE_OK;
@@ -195,15 +231,14 @@ void Editor_Window::show_warning()
 
 		if (ImGui::Button("OK", ImVec2(120, 0)))
 		{
-			ignore_warning = true;
+			set_flag(IGNORE_WARNING);
 			ImGui::CloseCurrentPopup();
 		}
 		ImGui::SetItemDefaultFocus();
 		ImGui::SameLine();
 		if (ImGui::Button("Cancel", ImVec2(120, 0)))
 		{
-			clear_req = false;
-			load_req = false;
+			clear_flag(NEW|OPEN);
 			ImGui::CloseCurrentPopup();
 		}
 		ImGui::EndPopup();
@@ -213,81 +248,68 @@ void Editor_Window::show_warning()
 void Editor_Window::handle_file_io()
 {
 	// new file requested
-	if(clear_req && !modal_open)
+	if(test_flag(NEW) && !modal_open)
 	{
-		if(modified && !ignore_warning)
+		if(test_flag(MODIFIED) && !test_flag(IGNORE_WARNING))
 		{
 			show_warning();
 		}
 		else
 		{
-			modified = false;
-			filename_set = false;
-			clear_req = false;
-			load_req = false;
-			save_req = false;
-			new_dialog = false;
-			ignore_warning = false;
+			clear_flag(MODIFIED|FILENAME_SET|NEW|OPEN|SAVE|DIALOG|IGNORE_WARNING);
 			filename = default_filename;
 			editor.SetText("");
 		}
 	}
-	// load dialog requested
-	else if(load_req && !modal_open)
+	// open dialog requested
+	else if(test_flag(OPEN) && !modal_open)
 	{
-		if(modified && !ignore_warning)
+		if((flag & MODIFIED) && !(flag & IGNORE_WARNING))
 		{
 			show_warning();
 		}
 		else
 		{
 			modal_open = 1;
-			fs.chooseFileDialog(new_dialog, fs.getLastDirectory(), default_filter);
-			new_dialog = false;
+			fs.chooseFileDialog(test_flag(DIALOG), fs.getLastDirectory(), default_filter);
+			clear_flag(DIALOG);
 			if(strlen(fs.getChosenPath()) > 0)
 			{
 				if(load_file(fs.getChosenPath()))
-					new_dialog = true;
+					set_flag(DIALOG);						// File couldn't be opened
 				else
-				{
-					ignore_warning = false;
-					load_req = false;
-				}
+					clear_flag(OPEN|IGNORE_WARNING);
 			}
 			else if(fs.hasUserJustCancelledDialog())
 			{
-				load_req = false;
-				ignore_warning = false;
+				clear_flag(OPEN|IGNORE_WARNING);
 			}
 		}
 	}
 	// save dialog requested
-	else if(save_req && !modal_open)
+	else if(test_flag(SAVE) && !modal_open)
 	{
-		if(save_as_req || !filename_set)
+		if(test_flag(SAVE_AS) || !test_flag(FILENAME_SET))
 		{
-			fs.saveFileDialog(new_dialog, fs.getLastDirectory(), get_display_filename().c_str(), default_filter);
-			new_dialog = false;
+			modal_open = 1;
+			fs.saveFileDialog(test_flag(DIALOG), fs.getLastDirectory(), get_display_filename().c_str(), default_filter);
+			clear_flag(DIALOG);
 			if(strlen(fs.getChosenPath()) > 0)
 			{
 				if(save_file(fs.getChosenPath()))
-					new_dialog = true;
+					set_flag(DIALOG);						// File couldn't be saved
 				else
-				{
-					save_as_req = false;
-					save_req = false;
-				}
+					clear_flag(SAVE|SAVE_AS);
 			}
 			else if(fs.hasUserJustCancelledDialog())
 			{
-				save_as_req = false;
-				save_req = false;
+				clear_flag(SAVE|SAVE_AS);
 			}
 		}
 		else
 		{
-			new_dialog = false;
-			save_req = false;
+			// TODO: show a message if file couldn't be saved ...
+			clear_flag(DIALOG|SAVE);
 			save_file(filename.c_str());
 		}
 	}
@@ -307,8 +329,8 @@ int Editor_Window::load_file(const char* fn)
 	auto t = std::ifstream(fn);
 	if (t.good())
 	{
-		modified = false;
-		filename_set = true;
+		clear_flag(MODIFIED);
+		set_flag(FILENAME_SET);
 		filename = fn;
 		std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 		editor.SetText(str);
@@ -322,8 +344,8 @@ int Editor_Window::save_file(const char* fn)
 	auto t = std::ofstream(fn);
 	if (t.good())
 	{
-		modified = false;
-		filename_set = true;
+		clear_flag(MODIFIED);
+		set_flag(FILENAME_SET);
 		filename = fn;
 		std::string str = editor.GetText();
 		t.write((char*)str.c_str(), str.size());

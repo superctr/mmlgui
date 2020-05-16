@@ -14,16 +14,12 @@ class Editor_Window : public Window
 
 		TextEditor editor;
 		ImGuiFs::Dialog fs;
-		bool modified;
 		std::string filename;
-		bool filename_set;
+		uint32_t flag;
 
-		bool clear_req;
-		bool load_req;
-		bool save_req;
-		bool save_as_req;
-		bool new_dialog;
-		bool ignore_warning;
+		inline void set_flag(uint32_t data) { flag |= data; };
+		inline void clear_flag(uint32_t data) { flag &= ~data; };
+		inline bool test_flag(uint32_t data) { return flag & data; };
 
 		void show_close_warning();
 		void show_warning();
