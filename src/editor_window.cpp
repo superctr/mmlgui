@@ -35,20 +35,31 @@ enum Flags
 	SAVE			= 1<<4,
 	SAVE_AS			= 1<<5,
 	DIALOG			= 1<<6,
-	IGNORE_WARNING	= 1<<7
+	IGNORE_WARNING	= 1<<7,
+	RECOMPILE       = 1<<8,
 };
 
 Editor_Window::Editor_Window()
 	: editor()
 	, filename(default_filename)
-	, flag(false)
+	, flag(RECOMPILE)
 {
 	editor.SetColorizerEnable(false); // disable syntax highlighting for now
+	song_manager = std::make_shared<Song_Manager>();
 }
 
 void Editor_Window::display()
 {
 	bool keep_open = true;
+
+	if(test_flag(RECOMPILE))
+	{
+		if(!song_manager->get_compile_in_progress())
+		{
+			if(!song_manager->compile(editor.GetText(), ""))
+				clear_flag(RECOMPILE);
+		}
+	}
 
 	std::string window_id;
 	window_id = get_display_filename();
@@ -81,23 +92,23 @@ void Editor_Window::display()
 			bool ro = editor.IsReadOnly();
 
 			if (ImGui::MenuItem("Undo", "Ctrl+Z or Alt+Backspace", nullptr, !ro && editor.CanUndo()))
-				editor.Undo(), set_flag(MODIFIED);
+				editor.Undo(), set_flag(MODIFIED|RECOMPILE);
 			if (ImGui::MenuItem("Redo", "Ctrl+Y", nullptr, !ro && editor.CanRedo()))
-				editor.Redo(), set_flag(MODIFIED);
+				editor.Redo(), set_flag(MODIFIED|RECOMPILE);
 
 			ImGui::Separator();
 
 			if (ImGui::MenuItem("Cut", "Ctrl+X", nullptr, !ro && editor.HasSelection()))
-				editor.Cut(), set_flag(MODIFIED);
+				editor.Cut(), set_flag(MODIFIED|RECOMPILE);
 			if (ImGui::MenuItem("Copy", "Ctrl+C", nullptr, editor.HasSelection()))
 				editor.Copy();
 			if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
-				editor.Delete(), set_flag(MODIFIED);
+				editor.Delete(), set_flag(MODIFIED|RECOMPILE);
 
 			GLFWerrorfun prev_error_callback = glfwSetErrorCallback(NULL); // disable clipboard error messages...
 
 			if (ImGui::MenuItem("Paste", "Ctrl+V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-				editor.Paste(), set_flag(MODIFIED);
+				editor.Paste(), set_flag(MODIFIED|RECOMPILE);
 
 			glfwSetErrorCallback(prev_error_callback);
 
@@ -138,7 +149,7 @@ void Editor_Window::display()
 	glfwSetErrorCallback(prev_error_callback);
 
 	if(editor.IsTextChanged())
-		set_flag(MODIFIED);
+		set_flag(MODIFIED|RECOMPILE);
 
 	if (ImGui::IsWindowFocused() | editor.IsWindowFocused())
 	{
@@ -164,8 +175,10 @@ void Editor_Window::display()
 	}
 
 	ImGui::Spacing();
-	ImGui::Text("%6d/%-6d %6d line%c  | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), (editor.GetTotalLines() == 1) ? ' ' : 's',
+	ImGui::Text("%6d/%-6d %6d line%c  | %s | ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), (editor.GetTotalLines() == 1) ? ' ' : 's',
 		editor.IsOverwrite() ? "Ovr" : "Ins");
+
+	get_compile_result();
 
 	ImGui::End();
 
@@ -256,6 +269,7 @@ void Editor_Window::handle_file_io()
 		}
 		else
 		{
+			set_flag(RECOMPILE);
 			clear_flag(MODIFIED|FILENAME_SET|NEW|OPEN|SAVE|DIALOG|IGNORE_WARNING);
 			filename = default_filename;
 			editor.SetText("");
@@ -315,22 +329,13 @@ void Editor_Window::handle_file_io()
 	}
 }
 
-std::string Editor_Window::get_display_filename()
-{
-	auto pos = filename.rfind("/");
-	if(pos != std::string::npos)
-		return filename.substr(pos+1);
-	else
-		return filename;
-}
-
 int Editor_Window::load_file(const char* fn)
 {
 	auto t = std::ifstream(fn);
 	if (t.good())
 	{
 		clear_flag(MODIFIED);
-		set_flag(FILENAME_SET);
+		set_flag(FILENAME_SET|RECOMPILE);
 		filename = fn;
 		std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 		editor.SetText(str);
@@ -348,11 +353,46 @@ int Editor_Window::save_file(const char* fn)
 	if (t.good())
 	{
 		clear_flag(MODIFIED);
-		set_flag(FILENAME_SET);
+		set_flag(FILENAME_SET|RECOMPILE);
 		filename = fn;
 		std::string str = editor.GetText();
 		t.write((char*)str.c_str(), str.size());
 		return 0;
 	}
 	return -1;
+}
+
+std::string Editor_Window::get_display_filename()
+{
+	auto pos = filename.rfind("/");
+	if(pos != std::string::npos)
+		return filename.substr(pos+1);
+	else
+		return filename;
+}
+
+void Editor_Window::get_compile_result()
+{
+	ImGui::SameLine();
+	switch(song_manager->get_compile_result())
+	{
+		default:
+		case Song_Manager::COMPILE_NOT_DONE:
+			ImGui::Text("Compiling");
+			break;
+		case Song_Manager::COMPILE_OK:
+			ImGui::Text("OK");
+			break;
+		case Song_Manager::COMPILE_ERROR:
+			ImGui::Text("Error");
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::BeginTooltip();
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(song_manager->get_error_message().c_str());
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			break;
+	}
 }

@@ -1,25 +1,26 @@
 #ifndef EDITOR_WINDOW
 #define EDITOR_WINDOW
 
+#include <memory>
 #include <string>
-#include "window.h"
+
 #include "TextEditor.h"
 #include "addons/imguifilesystem/imguifilesystem.h"
 
+#include "window.h"
+#include "song_manager.h"
+
 class Editor_Window : public Window
 {
+	public:
+		Editor_Window();
+
+		void display() override;
+		void close_request() override;
+
 	private:
 		const char* default_filename = "Untitled.mml";
 		const char* default_filter = ".mml;.muc;.txt";
-
-		TextEditor editor;
-		ImGuiFs::Dialog fs;
-		std::string filename;
-		uint32_t flag;
-
-		inline void set_flag(uint32_t data) { flag |= data; };
-		inline void clear_flag(uint32_t data) { flag &= ~data; };
-		inline bool test_flag(uint32_t data) { return flag & data; };
 
 		void show_close_warning();
 		void show_warning();
@@ -28,12 +29,17 @@ class Editor_Window : public Window
 		int save_file(const char* fn);
 
 		std::string get_display_filename();
+		void get_compile_result();
 
-	public:
-		Editor_Window();
+		inline void set_flag(uint32_t data) { flag |= data; };
+		inline void clear_flag(uint32_t data) { flag &= ~data; };
+		inline bool test_flag(uint32_t data) { return flag & data; };
 
-		void display() override;
-		void close_request() override;
+		TextEditor editor;
+		ImGuiFs::Dialog fs;
+		std::string filename;
+		uint32_t flag;
+		std::shared_ptr<Song_Manager> song_manager;
 };
 
 #endif
