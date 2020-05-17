@@ -27,8 +27,8 @@ endif
 ##---------------------------------------------------------------------
 ## BUILD FLAGS PER PLATFORM
 ##---------------------------------------------------------------------
-CFLAGS += -I$(IMGUI_SRC) -I$(IMGUI_SRC)/examples -I$(IMGUI_SRC)/examples/libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(IMGUI_CTE_SRC) -I$(CTRMML_SRC)
-LDFLAGS += -L$(CTRMML_LIB) -lvgm-audio -lvgm-emu -lctrmml
+CFLAGS += -I$(IMGUI_SRC) -I$(IMGUI_SRC)/examples -I$(IMGUI_SRC)/examples/libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(IMGUI_CTE_SRC)
+LDFLAGS +=
 
 ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
@@ -70,6 +70,15 @@ IMGUI_CTE_OBJS = \
 ##---------------------------------------------------------------------
 ## IMGUI specific stuff ends
 ##---------------------------------------------------------------------
+
+# ctrmml library is in a local submodule and only a static library can be built
+CFLAGS += -I$(CTRMML_SRC)
+LDFLAGS += -L$(CTRMML_LIB) -lctrmml
+
+# libvgm should be installed on the system and we must tell the linker to
+# pick the statically build version (to avoid .so headaches)
+CFLAGS += -I$(CTRMML_SRC)
+LDFLAGS += -Wl,-Bstatic -lvgm-audio -lvgm-emu -Wl,-Bdynamic
 
 MMLGUI_OBJS = \
 	$(IMGUI_OBJS) \
