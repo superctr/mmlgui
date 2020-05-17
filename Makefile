@@ -2,6 +2,7 @@ IMGUI_CTE_SRC = ImGuiColorTextEdit
 IMGUI_CTE_OBJ = obj/$(IMGUI_CTE_SRC)
 IMGUI_SRC = imgui
 IMGUI_OBJ = obj/$(IMGUI_SRC)
+CTRMML_SRC = ctrmml/src
 CTRMML_LIB = ctrmml/lib
 SRC = src
 OBJ = obj
@@ -26,7 +27,7 @@ endif
 ##---------------------------------------------------------------------
 ## BUILD FLAGS PER PLATFORM
 ##---------------------------------------------------------------------
-CFLAGS += -I$(IMGUI_SRC) -I$(IMGUI_SRC)/examples -I$(IMGUI_SRC)/examples/libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(IMGUI_CTE_SRC)
+CFLAGS += -I$(IMGUI_SRC) -I$(IMGUI_SRC)/examples -I$(IMGUI_SRC)/examples/libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(IMGUI_CTE_SRC) -I$(CTRMML_SRC)
 LDFLAGS += -L$(CTRMML_LIB) -lvgm-audio -lvgm-emu -lctrmml
 
 ifeq ($(UNAME_S), Linux) #LINUX
