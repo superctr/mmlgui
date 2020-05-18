@@ -30,6 +30,7 @@ class Song_Manager
 		int compile(const std::string& buffer, const std::string& filename);
 
 		std::shared_ptr<Song> get_song();
+		std::shared_ptr<std::map<int,Track_Info>> get_tracks();
 		std::string get_error_message();
 
 	private:

@@ -18,6 +18,7 @@
 */
 
 #include "editor_window.h"
+#include "track_view_window.h"
 
 #include "imgui.h"
 
@@ -127,12 +128,21 @@ void Editor_Window::display()
 
 		if (ImGui::BeginMenu("View"))
 		{
-			if (ImGui::MenuItem("Dark palette"))
-				editor.SetPalette(TextEditor::GetDarkPalette());
-			if (ImGui::MenuItem("Light palette"))
-				editor.SetPalette(TextEditor::GetLightPalette());
-			if (ImGui::MenuItem("Retro blue palette"))
-				editor.SetPalette(TextEditor::GetRetroBluePalette());
+			if (ImGui::MenuItem("Track view..."))
+			{
+				children.push_back(std::make_shared<Track_View_Window>(song_manager));
+			}
+			ImGui::Separator();
+			if (ImGui::BeginMenu("Editor style"))
+			{
+				if (ImGui::MenuItem("Dark palette"))
+					editor.SetPalette(TextEditor::GetDarkPalette());
+				if (ImGui::MenuItem("Light palette"))
+					editor.SetPalette(TextEditor::GetLightPalette());
+				if (ImGui::MenuItem("Retro blue palette"))
+					editor.SetPalette(TextEditor::GetRetroBluePalette());
+				ImGui::EndMenu();
+			}
 			ImGui::EndMenu();
 		}
 		ImGui::EndMenuBar();

@@ -87,7 +87,8 @@ MMLGUI_OBJS = \
 	$(OBJ)/main_window.o \
 	$(OBJ)/editor_window.o \
 	$(OBJ)/song_manager.o \
-	$(OBJ)/track_info.o
+	$(OBJ)/track_info.o \
+	$(OBJ)/track_view_window.o
 
 UNITTEST_OBJS = \
 	$(OBJ)/track_info.o \

@@ -30,10 +30,10 @@ void Track_Info_Generator::write_event()
 		// Fill the ext_event
 		Track_Info::Ext_Event ext;
 		ext.note = event.param;
-		ext.on_time = event.on_time;
+		ext.on_time = on_time;
 		ext.is_tie = (event.type == Event::TIE);
 		ext.is_slur = slur_flag;
-		ext.off_time = event.off_time;
+		ext.off_time = off_time;
 		ext.vol = get_var(Event::VOL_FINE);
 		ext.coarse_vol_flag = coarse_volume_flag();
 		ext.ins = get_var(Event::INS);

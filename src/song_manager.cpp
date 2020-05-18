@@ -104,6 +104,13 @@ std::shared_ptr<Song> Song_Manager::get_song()
 	return song;
 }
 
+//! Get track info data
+std::shared_ptr<std::map<int,Track_Info>> Song_Manager::get_tracks()
+{
+	std::lock_guard<std::mutex> guard(mutex);
+	return tracks;
+}
+
 //! Get error message
 std::string Song_Manager::get_error_message()
 {
