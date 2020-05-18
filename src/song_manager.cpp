@@ -1,4 +1,5 @@
 #include "song_manager.h"
+#include "track_info.h"
 #include "song.h"
 #include "input.h"
 #include "player.h"
@@ -130,6 +131,7 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 	bool successful = false;
 	std::shared_ptr<InputRef> ref = nullptr;
 	std::shared_ptr<Song> temp_song = nullptr;
+	std::shared_ptr<std::map<int,Track_Info>> temp_tracks = nullptr;
 	std::string str;
 	std::string message;
 	int line = 0;
@@ -137,6 +139,7 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 	try
 	{
 		temp_song = std::make_shared<Song>();
+		temp_tracks = std::make_shared<std::map<int,Track_Info>>();
 
 		int path_break = filename.find_last_of("/\\");
 		if(path_break != -1)
@@ -153,7 +156,13 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 		}
 
 		// try to run Song_Validator (to be replaced in future with a custom ...)
-		auto validator = Song_Validator(*temp_song);
+		for(auto it = temp_song->get_track_map().begin(); it != temp_song->get_track_map().end(); it++)
+		{
+			// TODO: in the future, store track count in song data or tags
+			if(it->first < 16)
+				temp_tracks->emplace_hint(temp_tracks->end(),
+					std::make_pair(it->first, Track_Info_Generator(*temp_song, it->second)));
+		}
 
 		successful = true;
 		message = "";
@@ -173,6 +182,7 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 	job_done = true;
 	job_successful = successful;
 	song = temp_song;
+	tracks = temp_tracks;
 	error_message = message;
 	error_reference = ref;
 }

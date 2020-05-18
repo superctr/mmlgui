@@ -9,6 +9,8 @@
 #include "core.h"
 #include "input.h"
 
+struct Track_Info;
+
 class Song_Manager
 {
 	public:
@@ -49,6 +51,7 @@ class Song_Manager
 
 		// worker output
 		std::shared_ptr<Song> song;
+		std::shared_ptr<std::map<int,Track_Info>> tracks;
 		std::string error_message;
 		std::shared_ptr<InputRef> error_reference;
 };

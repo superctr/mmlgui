@@ -28,28 +28,28 @@ endif
 ## BUILD FLAGS PER PLATFORM
 ##---------------------------------------------------------------------
 CFLAGS += -I$(IMGUI_SRC) -I$(IMGUI_SRC)/examples -I$(IMGUI_SRC)/examples/libs/gl3w -DIMGUI_IMPL_OPENGL_LOADER_GL3W -I$(IMGUI_CTE_SRC)
-LDFLAGS +=
+LDFLAGS_MMLGUI =
 
 ifeq ($(UNAME_S), Linux) #LINUX
 	ECHO_MESSAGE = "Linux"
-	LDFLAGS += -lGL `pkg-config --static --libs glfw3`
+	LDFLAGS_MMLGUI += -lGL `pkg-config --static --libs glfw3`
 
 	CFLAGS += `pkg-config --cflags glfw3`
 endif
 
 ifeq ($(UNAME_S), Darwin) #APPLE
 	ECHO_MESSAGE = "Mac OS X"
-	LDFLAGS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
-	LDFLAGS += -L/usr/local/lib -L/opt/local/lib
-	#LDFLAGS += -lglfw3
-	LDFLAGS += -lglfw
+	LDFLAGS_MMLGUI += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
+	LDFLAGS_MMLGUI += -L/usr/local/lib -L/opt/local/lib
+	#LDFLAGS_MMLGUI += -lglfw3
+	LDFLAGS_MMLGUI += -lglfw
 
 	CFLAGS += -I/usr/local/include -I/opt/local/include
 endif
 
 ifeq ($(OS),Windows_NT)
 	ECHO_MESSAGE = "MinGW"
-	LDFLAGS += -lglfw3 -lgdi32 -lopengl32 -limm32
+	LDFLAGS_MMLGUI += -lglfw3 -lgdi32 -lopengl32 -limm32
 
 	CFLAGS += `pkg-config --cflags glfw3`
 endif
@@ -77,8 +77,7 @@ LDFLAGS += -L$(CTRMML_LIB) -lctrmml
 
 # libvgm should be installed on the system and we must tell the linker to
 # pick the statically build version (to avoid .so headaches)
-CFLAGS += -I$(CTRMML_SRC)
-LDFLAGS += -Wl,-Bstatic -lvgm-audio -lvgm-emu -Wl,-Bdynamic
+LDFLAGS_MMLGUI += -Wl,-Bstatic -lvgm-audio -lvgm-emu -Wl,-Bdynamic
 
 MMLGUI_OBJS = \
 	$(IMGUI_OBJS) \
@@ -87,7 +86,13 @@ MMLGUI_OBJS = \
 	$(OBJ)/window.o \
 	$(OBJ)/main_window.o \
 	$(OBJ)/editor_window.o \
-	$(OBJ)/song_manager.o
+	$(OBJ)/song_manager.o \
+	$(OBJ)/track_info.o
+
+UNITTEST_OBJS = \
+	$(OBJ)/track_info.o \
+	$(OBJ)/unittest/main.o \
+	$(OBJ)/unittest/test_track_info.o
 
 $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
@@ -105,22 +110,28 @@ $(IMGUI_OBJ)/%.o: $(IMGUI_SRC)/%.c
 	@mkdir -p $(@D)
 	$(CC) $(CFLAGS) -MMD -c $< -o $@
 
-all: mmlgui
+all: mmlgui test
 
 $(CTRMML_LIB)/libctrmml.a:
 	make -C ctrmml lib RELEASE=$(RELEASE)
 
 mmlgui: $(MMLGUI_OBJS) $(CTRMML_LIB)/libctrmml.a
-	$(CXX) $(MMLGUI_OBJS) $(LDFLAGS) -o $@
+	$(CXX) $(MMLGUI_OBJS) $(LDFLAGS) $(LDFLAGS_MMLGUI) -o $@
 ifeq ($(OS),Windows_NT)
 	cp `which glfw3.dll` $(@D)
 endif
+
+unittest: $(UNITTEST_OBJS) $(CTRMML_LIB)/libctrmml.a
+	$(CXX) $(UNITTEST_OBJS) $(LDFLAGS) $(LDFLAGS_TEST) -o $@
+
+test: unittest
+	./unittest
 
 clean:
 	rm -rf $(OBJ)
 	$(MAKE) -C ctrmml clean
 	rm -rf $(CTRMML_LIB)
 
-.PHONY: all
+.PHONY: all test
 
--include $(OBJ)/*.d $(IMGUI_CTE_OBJ)/*.d $(IMGUI_OBJ)/*.d
+-include $(OBJ)/*.d $(OBJ)/unittest/*.d $(IMGUI_CTE_OBJ)/*.d $(IMGUI_OBJ)/*.d
