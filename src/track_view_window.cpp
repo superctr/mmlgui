@@ -233,11 +233,13 @@ void Track_View_Window::draw_tracks()
 		else
 			y_off = 0;
 
+		// calculate position
 		auto it = info.events.lower_bound(y_pos - y_off);
 		double y = (it->first + y_off) * y_scale - yr;
 
 		border_complete = true;
 
+		// draw the previous event if we can
 		if(it != info.events.begin())
 		{
 			--it;
@@ -246,6 +248,7 @@ void Track_View_Window::draw_tracks()
 			++it;
 		}
 
+		// draw each event
 		for(int i=0; i<max_objs_per_column; i++)
 		{
 			if(y > canvas_size.y)
@@ -284,6 +287,26 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 			ImVec2(x1,y1),
 			ImVec2(x2,y2),
 			fill_color);
+
+		// draw note text
+		ImFont* font = ImGui::GetFont();
+		if(!event.is_tie && std::floor(event.on_time * y_scale) > font->FontSize)
+		{
+			static const double margin = 2.0;
+			std::string str = get_note_name(event);
+			double max_width = track_width - margin * 2;
+			ImVec2 size = font->CalcTextSizeA(font->FontSize, max_width, max_width, str.c_str());
+
+			draw_list->AddText(
+				font,
+				font->FontSize,
+				ImVec2(
+					x1 + track_width/2 - size.x/2,
+					y1 + margin),
+				IM_COL32(255, 255, 255, 255),
+				str.c_str());
+		}
+
 	}
 
 	// draw the gap
@@ -293,4 +316,14 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 	}
 
 	return y + (event.on_time + event.off_time) * y_scale;
+}
+
+//! Get the note name
+std::string Track_View_Window::get_note_name(const Track_Info::Ext_Event& event) const
+{
+	const char* semitones[12] = { "c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b" };
+	std::string str = semitones[event.note % 12];
+	// TODO: add octave if we have enough space
+
+	return str;
 }

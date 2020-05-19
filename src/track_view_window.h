@@ -38,6 +38,8 @@ class Track_View_Window : public Window
 		void draw_tracks();
 		double draw_event(double x, double y, int position, const Track_Info::Ext_Event& event);
 
+		std::string get_note_name(const Track_Info::Ext_Event& event) const;
+
 		double x_pos;
 		double y_pos;
 

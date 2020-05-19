@@ -45,6 +45,7 @@ Editor_Window::Editor_Window()
 	, filename(default_filename)
 	, flag(RECOMPILE)
 {
+	type = WT_EDITOR;
 	editor.SetColorizerEnable(false); // disable syntax highlighting for now
 	song_manager = std::make_shared<Song_Manager>();
 }

@@ -4,7 +4,8 @@
 enum Window_Type
 {
 	WT_DEFAULT = 0,
-	WT_FPS_OVERLAY
+	WT_FPS_OVERLAY,
+	WT_EDITOR
 };
 
 #endif
