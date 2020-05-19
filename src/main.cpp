@@ -14,6 +14,12 @@
 #include <stdio.h>
 #include <csignal>
 #include <cstdlib>
+#include <ctime>
+
+// TODO : https://www.gnu.org/software/libc/manual/html_node/Backtraces.html
+//#ifdef defined(__GLIBC__) && !defined(__UCLIBC__) && !defined(__MUSL__)
+//#include <execinfo.h>
+//#endif
 
 // About Desktop OpenGL function loaders:
 //	Modern desktop OpenGL doesn't have a standard portable header file to load OpenGL function pointers.
@@ -52,10 +58,24 @@ using namespace gl;
 // Our state
 Main_Window main_window;
 
-static void sigsegv_handler(int signal)
+static void sig_handler(int signal)
 {
-	// dump MML files to stderr (todo: save them to a file)
-	fprintf(stderr, "Dump state:\n%s", main_window.dump_state_all().c_str());
+	// dump current editor state
+	std::time_t time = std::time(nullptr);
+	FILE* file = fopen("crash.log", "a");
+	fputs("========================================================================\n", file);
+	fputs("Crash type : ", file);
+	if(signal == SIGSEGV)
+		fputs("SIGSEGV\n", file);
+	else if(signal == SIGFPE)
+		fputs("SIGFPE\n", file);
+	else
+		fprintf(file, "%d\n", signal);
+	fprintf(file, "Crash time : %s\n", std::asctime(std::localtime(&time)));
+	fputs(main_window.dump_state_all().c_str(), file);
+	fputs("========================================================================\n", file);
+	fclose(file);
+	fprintf(stderr, "Saved dump to crash.log");
 	std::abort();
 }
 
@@ -147,7 +167,8 @@ int main(int, char**)
 	//ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 	//IM_ASSERT(font != NULL);
 
-	std::signal(SIGSEGV, sigsegv_handler);
+	std::signal(SIGSEGV, sig_handler);
+	std::signal(SIGFPE, sig_handler);
 
 	ImVec4 clear_color = ImVec4(0.06f, 0.11f, 0.20f, 1.00f);
 

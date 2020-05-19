@@ -7,8 +7,65 @@
 #include "editor_window.h"
 
 //=====================================================================
-// only for debug
 extern Main_Window main_window;
+
+#ifndef IMGUI_DISABLE_DEMO_WINDOWS
+static bool debug_imgui_demo_windows = false;
+#endif
+#ifndef IMGUI_DISABLE_METRICS_WINDOW
+static bool debug_imgui_metrics = false;
+#endif
+static bool debug_state_window = false;
+
+static void debug_menu()
+{
+#ifndef IMGUI_DISABLE_METRICS_WINDOW
+	ImGui::MenuItem("ImGui metrics", NULL, &debug_imgui_metrics);
+#endif
+#ifndef IMGUI_DISABLE_DEMO_WINDOWS
+	ImGui::MenuItem("ImGui demo windows", NULL, &debug_imgui_demo_windows);
+#endif
+	ImGui::MenuItem("Display dump state", NULL, &debug_state_window);
+	if (ImGui::MenuItem("Quit"))
+	{
+		// if ctrl+shift was held, stimulate a segfault
+		if(ImGui::GetIO().KeyCtrl && ImGui::GetIO().KeyAlt)
+			*(int*)0 = 0;
+		// if ctrl was held, raise a signal (usually that won't happen)
+		if(ImGui::GetIO().KeyCtrl)
+			std::raise(SIGFPE);
+		// otherwise we quit normally
+		else
+			main_window.close_request_all();
+	}
+	else if (ImGui::IsItemHovered())
+		ImGui::SetTooltip("hold ctrl to make a crash dump\n");
+	ImGui::EndMenu();
+}
+
+static void debug_window()
+{
+#ifndef IMGUI_DISABLE_METRICS_WINDOW
+	if(debug_imgui_metrics)
+		ImGui::ShowMetricsWindow(&debug_imgui_metrics);
+#endif
+#ifndef IMGUI_DISABLE_DEMO_WINDOWS
+	if(debug_imgui_demo_windows)
+		ImGui::ShowDemoWindow(&debug_imgui_demo_windows);
+#endif
+	if(debug_state_window)
+	{
+		std::string debug_state = main_window.dump_state_all();
+		ImGui::SetNextWindowPos(ImVec2(500, 400), ImGuiCond_Once);
+		ImGui::Begin("Debug state", &debug_state_window);
+		if (ImGui::Button("copy to clipboard"))
+			ImGui::SetClipboardText(debug_state.c_str());
+		ImGui::BeginChild("debug_log", ImGui::GetContentRegionAvail(), false, ImGuiWindowFlags_HorizontalScrollbar);
+		ImGui::TextUnformatted(debug_state.c_str(), debug_state.c_str()+debug_state.size());
+		ImGui::EndChild();
+		ImGui::End();
+	}
+}
 
 //=====================================================================
 FPS_Overlay::FPS_Overlay()
@@ -18,7 +75,6 @@ FPS_Overlay::FPS_Overlay()
 
 void FPS_Overlay::display()
 {
-	static bool show_metrics = false;
 	const float DISTANCE = 10.0f;
 	static int corner = 0;
 	ImGuiIO& io = ImGui::GetIO();
@@ -36,8 +92,8 @@ void FPS_Overlay::display()
 		ImGui::Text("FPS: %.2f", ImGui::GetIO().Framerate);
 		if (ImGui::BeginPopupContextWindow())
 		{
-			if (ImGui::MenuItem("Debug metrics",    NULL, show_metrics)) show_metrics ^= 1;
-			if (ImGui::MenuItem("Debug state"))     std::cerr << main_window.dump_state_all() << "\n";
+			if (ImGui::BeginMenu("Debug"))
+				debug_menu();
 			if (ImGui::BeginMenu("Overlay"))
 			{
 				if (ImGui::MenuItem("Custom",       NULL, corner == -1)) corner = -1;
@@ -52,8 +108,6 @@ void FPS_Overlay::display()
 		}
 	}
 	ImGui::End();
-	if(show_metrics)
-		ImGui::ShowMetricsWindow(&show_metrics);
 }
 
 //=====================================================================
@@ -85,4 +139,5 @@ void Main_Window::display()
 		}
 		ImGui::EndPopup();
 	}
+	debug_window();
 }

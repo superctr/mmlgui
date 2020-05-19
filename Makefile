@@ -2,8 +2,10 @@ IMGUI_CTE_SRC = ImGuiColorTextEdit
 IMGUI_CTE_OBJ = obj/$(IMGUI_CTE_SRC)
 IMGUI_SRC = imgui
 IMGUI_OBJ = obj/$(IMGUI_SRC)
-CTRMML_SRC = ctrmml/src
-CTRMML_LIB = ctrmml/lib
+CTRMML = ctrmml
+CTRMML_SRC = $(CTRMML)/src
+CTRMML_LIB = $(CTRMML)/lib
+LIBCTRMML  = ctrmml
 SRC = src
 OBJ = obj
 
@@ -12,8 +14,9 @@ LDFLAGS =
 
 ifneq ($(RELEASE),1)
 CFLAGS += -g
+LIBCTRMML := $(LIBCTRMML)_debug
 else
-CFLAGS += -O2
+CFLAGS += -O2 -DIMGUI_DISABLE_DEMO_WINDOWS=1 -DIMGUI_DISABLE_METRICS_WINDOW=1
 LDFLAGS += -s
 endif
 
@@ -73,7 +76,7 @@ IMGUI_CTE_OBJS = \
 
 # ctrmml library is in a local submodule and only a static library can be built
 CFLAGS += -I$(CTRMML_SRC)
-LDFLAGS += -L$(CTRMML_LIB) -lctrmml
+LDFLAGS += -L$(CTRMML_LIB) -l$(LIBCTRMML)
 
 # libvgm should be installed on the system and we must tell the linker to
 # pick the statically build version (to avoid .so headaches)
@@ -113,16 +116,16 @@ $(IMGUI_OBJ)/%.o: $(IMGUI_SRC)/%.c
 
 all: mmlgui test
 
-$(CTRMML_LIB)/libctrmml.a:
-	make -C ctrmml lib RELEASE=$(RELEASE)
+$(CTRMML_LIB)/lib$(LIBCTRMML).a:
+	$(MAKE) -C $(CTRMML) lib
 
-mmlgui: $(MMLGUI_OBJS) $(CTRMML_LIB)/libctrmml.a
+mmlgui: $(MMLGUI_OBJS) $(CTRMML_LIB)/lib$(LIBCTRMML).a
 	$(CXX) $(MMLGUI_OBJS) $(LDFLAGS) $(LDFLAGS_MMLGUI) -o $@
 ifeq ($(OS),Windows_NT)
 	cp `which glfw3.dll` $(@D)
 endif
 
-unittest: $(UNITTEST_OBJS) $(CTRMML_LIB)/libctrmml.a
+unittest: $(UNITTEST_OBJS) $(CTRMML_LIB)/lib$(LIBCTRMML).a
 	$(CXX) $(UNITTEST_OBJS) $(LDFLAGS) $(LDFLAGS_TEST) -o $@
 
 test: unittest
@@ -130,9 +133,12 @@ test: unittest
 
 clean:
 	rm -rf $(OBJ)
-	$(MAKE) -C ctrmml clean
+	$(MAKE) -C $(CTRMML) clean
 	rm -rf $(CTRMML_LIB)
 
-.PHONY: all test
+run: mmlgui
+	./mmlgui
+
+.PHONY: all test run
 
 -include $(OBJ)/*.d $(OBJ)/unittest/*.d $(IMGUI_CTE_OBJ)/*.d $(IMGUI_OBJ)/*.d
