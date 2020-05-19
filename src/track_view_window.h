@@ -39,7 +39,9 @@ class Track_View_Window : public Window
 		double draw_event(double x, double y, int position, const Track_Info::Ext_Event& event);
 		void draw_event_border(double x1, double x2, double y, const Track_Info::Ext_Event& event);
 
-		std::string get_note_name(const Track_Info::Ext_Event& event) const;
+		void hover_event(int position, const Track_Info::Ext_Event& event);
+
+		std::string get_note_name(uint16_t note) const;
 
 		double x_pos;
 		double y_pos;
@@ -56,8 +58,10 @@ class Track_View_Window : public Window
 		// scrolling state
 		bool hovered;
 		bool dragging;
-		ImVec2 last_mouse_pos;
-		ImVec2 mouse_pos;
+
+		// tooltip state
+		int hover_time;
+		const Track_Info::Ext_Event* hover_obj;
 
 		// drawing stuff
 		ImVec2 canvas_pos;

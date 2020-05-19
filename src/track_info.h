@@ -17,10 +17,11 @@ struct Track_Info
 
 		uint16_t off_time;
 
-		bool coarse_vol_flag;
-		uint16_t vol;
-		uint16_t ins;
-		uint16_t pitch_env;
+		bool coarse_volume_flag;
+		uint16_t volume;
+		uint16_t instrument;
+		int16_t transpose;
+		uint16_t pitch_envelope;
 		uint16_t portamento;
 	};
 

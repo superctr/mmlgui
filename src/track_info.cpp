@@ -31,15 +31,16 @@ void Track_Info_Generator::write_event()
 	{
 		// Fill the ext_event
 		Track_Info::Ext_Event ext;
-		ext.note = event.param + get_var(Event::TRANSPOSE);
+		ext.note = event.param;
 		ext.on_time = on_time;
 		ext.is_tie = (event.type == Event::TIE);
 		ext.is_slur = slur_flag;
 		ext.off_time = off_time;
-		ext.vol = get_var(Event::VOL_FINE);
-		ext.coarse_vol_flag = coarse_volume_flag();
-		ext.ins = get_var(Event::INS);
-		ext.pitch_env = get_var(Event::PITCH_ENVELOPE);
+		ext.volume = get_var(Event::VOL_FINE);
+		ext.coarse_volume_flag = coarse_volume_flag();
+		ext.instrument = get_var(Event::INS);
+		ext.transpose = get_var(Event::TRANSPOSE);
+		ext.pitch_envelope = get_var(Event::PITCH_ENVELOPE);
 		ext.portamento = get_var(Event::PORTAMENTO);
 		events.emplace_hint(events.end(), std::pair<int, Track_Info::Ext_Event>(get_play_time(), ext));
 

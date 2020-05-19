@@ -90,27 +90,20 @@ void Track_View_Window::display()
 	draw_list = ImGui::GetWindowDrawList();
 
 	// handle controls
+	ImGuiIO& io = ImGui::GetIO();
 	ImGui::InvisibleButton("canvas", canvas_size);
 	if(dragging)
 	{
 		if(!ImGui::IsMouseDown(0))
-		{
 			dragging = false;
-		}
 		else
-		{
-			last_mouse_pos = mouse_pos;
-			mouse_pos = ImGui::GetIO().MousePos;
-			y_scroll = mouse_pos.y - last_mouse_pos.y;
-		}
+			y_scroll = io.MouseDelta.y;
 	}
 	if(ImGui::IsItemHovered())
 	{
 		if(!dragging && ImGui::IsMouseClicked(0))
-		{
 			dragging = true;
-			mouse_pos = ImGui::GetIO().MousePos;
-		}
+		y_scroll += io.MouseWheel * 5;
 	}
 
 	// handle scrolling
@@ -191,12 +184,19 @@ void Track_View_Window::draw_ruler()
 			// draw measure number
 			int measure = beat / measure_beat_count;
 			std::string str = std::to_string(measure);
+
+			ImVec2 size = ImGui::GetFont()->CalcTextSizeA(
+				ImGui::GetFontSize(),
+				ruler_width,
+				ruler_width,
+				str.c_str());
+
 			draw_list->AddText(
 				ImGui::GetFont(),
 				ImGui::GetFontSize(),
 				ImVec2(
-					canvas_pos.x + 2.0, //todo: centered text
-					canvas_pos.y + y - (ImGui::GetFontSize()/2.)),
+					canvas_pos.x + ruler_width/2 - size.x/2,
+					canvas_pos.y + y - size.y/2),
 				IM_COL32(255, 255, 255, 255),
 				str.c_str());
 
@@ -305,6 +305,13 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 	double y2a = canvas_pos.y + std::floor(y + (event.on_time + event.off_time) * y_scale);
 	ImU32 fill_color = IM_COL32(195, 0, 0, 255);
 
+	//testing
+	if(ImGui::IsMouseHoveringRect(ImVec2(x1,y1),ImVec2(x2,y2a)) && ImGui::IsItemHovered())
+	{
+		fill_color = IM_COL32(235, 40, 40, 255);
+		hover_event(position, event);
+	}
+
 	// draw the note
 	if(event.on_time)
 	{
@@ -320,7 +327,7 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 		if(!event.is_tie && std::floor(event.on_time * y_scale) > font->FontSize)
 		{
 			static const double margin = 2.0;
-			std::string str = get_note_name(event);
+			std::string str = get_note_name(event.note + event.transpose);
 			double max_width = track_width - margin * 2;
 			ImVec2 size = font->CalcTextSizeA(font->FontSize, max_width, max_width, str.c_str());
 
@@ -359,11 +366,70 @@ void Track_View_Window::draw_event_border(double x1, double x2, double y, const 
 	}
 }
 
+//! Handle mouse hovering
+void Track_View_Window::hover_event(int position, const Track_Info::Ext_Event& event)
+{
+	if((hover_obj != &event) || dragging)
+	{
+		hover_obj = &event;
+		hover_time = 0;
+	}
+	else
+	{
+		hover_time++;
+		if(hover_time > 20)
+		{
+			ImGui::BeginTooltip();
+			ImGui::Text("@%d %c%d",
+				event.instrument,
+				(event.coarse_volume_flag) ? 'v' : 'V',
+				event.volume);
+			if(event.transpose)
+			{
+				ImGui::SameLine();
+				ImGui::Text("k%d", event.transpose);
+			}
+			if(event.pitch_envelope)
+			{
+				ImGui::SameLine();
+				ImGui::Text("M%d", event.pitch_envelope);
+			}
+			if(event.portamento)
+			{
+				ImGui::SameLine();
+				ImGui::Text("G%d", event.portamento);
+			}
+			ImGui::SameLine();
+			if(event.on_time && !event.is_tie)
+			{
+				ImGui::Text("o%d%s",
+					event.note/12,
+					get_note_name(event.note).c_str());
+				ImGui::Text("t: %d-%d", position, position+event.on_time - 1);
+			}
+			else if(event.is_tie)
+			{
+				ImGui::Text(";tie");
+				if(event.on_time)
+					ImGui::Text("t: %d-%d", position, position+event.on_time - 1);
+				else
+					ImGui::Text("t: %d", position);
+			}
+			else if(event.off_time)
+			{
+				ImGui::Text(";rest");
+				ImGui::Text("t: %d", position);
+			}
+			ImGui::EndTooltip();
+		}
+	}
+}
+
 //! Get the note name
-std::string Track_View_Window::get_note_name(const Track_Info::Ext_Event& event) const
+std::string Track_View_Window::get_note_name(uint16_t note) const
 {
 	const char* semitones[12] = { "c", "c+", "d", "d+", "e", "f", "f+", "g", "g+", "a", "a+", "b" };
-	std::string str = semitones[event.note % 12];
+	std::string str = semitones[note % 12];
 	// TODO: add octave if we have enough space
 
 	return str;
