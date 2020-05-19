@@ -1,3 +1,14 @@
+/*
+	Track view window
+
+	todo:
+		- Note labels
+		- tooltips
+		- doubleclick to open reference in text editor
+		- handle time signature / realign measure lines..
+
+*/
+
 #include "track_view_window.h"
 #include "track_info.h"
 #include "song.h"
@@ -18,7 +29,7 @@ const double Track_View_Window::y_min = 0.0;
 
 // scroll inertia
 const double Track_View_Window::inertia_threshold = 1.0;
-const double Track_View_Window::inertia_acceleration = 0.9;
+const double Track_View_Window::inertia_acceleration = 0.95;
 
 // width of columns
 const double Track_View_Window::ruler_width = 25.0;
@@ -30,6 +41,7 @@ Track_View_Window::Track_View_Window(std::shared_ptr<Song_Manager> song_mgr)
 	, y_pos(0.0)
 	, x_scale(1.0)
 	, y_scale(1.0)
+	, y_scale_log(1.0)
 	, x_scroll(0.0)
 	, y_scroll(0.0)
 	, song_manager(song_mgr)
@@ -49,7 +61,8 @@ void Track_View_Window::display()
 
 	ImGui::InputDouble("y_pos", &y_pos, 1.0f, 1.0f, "%.2f");
 	ImGui::SameLine();
-	ImGui::InputDouble("y_scale", &y_scale, 0.01f, 0.1f, "%.2f");
+	ImGui::InputDouble("y_scale", &y_scale_log, 0.01f, 0.1f, "%.2f");
+	y_scale = std::pow(y_scale_log, 2);
 
 	ImGui::PopItemWidth();
 
@@ -133,7 +146,7 @@ void Track_View_Window::draw_ruler()
 	int beat = y_pos / beat_len;
 
 	// start from the beginning of the beat (above clip area if necessary)
-	double y = 0.0 - (yp % beat_len) * y_scale;
+	double y = 0.0 - std::fmod(y_pos, beat_len) * y_scale;
 
 	// special case for negative position
 	if(y_pos < 0)
@@ -207,21 +220,28 @@ void Track_View_Window::draw_tracks()
 
 	double x = std::floor(ruler_width * 2.0);
 
-	int yp = y_pos;
+	int y_off = 0;
 	double yr = y_pos * y_scale;
 
 	for(auto track_it = map.begin(); track_it != map.end(); track_it++)
 	{
 		auto& info = track_it->second;
-		auto it = info.events.lower_bound(y_pos);
-		double y = it->first * y_scale - yr;
+
+		// calculate offset to first loop
+		if(y_pos > info.length && info.loop_length)
+			y_off = (((int)y_pos - info.loop_start) / info.loop_length) * info.loop_length;
+		else
+			y_off = 0;
+
+		auto it = info.events.lower_bound(y_pos - y_off);
+		double y = (it->first + y_off) * y_scale - yr;
 
 		border_complete = true;
 
 		if(it != info.events.begin())
 		{
 			--it;
-			y = it->first * y_scale - yr;
+			y = (it->first + y_off) * y_scale - yr;
 			y = draw_event(x, y, it->first, it->second);
 			++it;
 		}
@@ -231,7 +251,13 @@ void Track_View_Window::draw_tracks()
 			if(y > canvas_size.y)
 				break;
 			if(it == info.events.end())
-				break;
+			{
+				// go back to loop point if possible
+				if(info.loop_length)
+					it = info.events.lower_bound(info.loop_start);
+				else
+					break;
+			}
 			y = draw_event(x, y, it->first, it->second);
 			it++;
 		}

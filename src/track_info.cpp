@@ -10,7 +10,7 @@ Track_Info_Generator::Track_Info_Generator(Song& song, Track& track)
 	, Track_Info()
 	, slur_flag(0)
 {
-	loop_start = 0;
+	loop_start = -1;
 	loop_length = 0;
 	length = 0;
 
@@ -19,7 +19,8 @@ Track_Info_Generator::Track_Info_Generator(Song& song, Track& track)
 		step_event();
 
 	length = get_play_time();
-	loop_length = length - loop_start;
+	if(loop_start >= 0)
+		loop_length = length - loop_start;
 }
 
 void Track_Info_Generator::write_event()

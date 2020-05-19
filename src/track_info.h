@@ -25,7 +25,8 @@ struct Track_Info
 	};
 
 	std::map<int, Ext_Event> events;
-	unsigned int loop_start;
+
+	int loop_start;						// -1 for no loop
 	unsigned int loop_length;
 	unsigned int length;
 };

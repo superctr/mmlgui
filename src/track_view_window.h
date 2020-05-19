@@ -43,6 +43,7 @@ class Track_View_Window : public Window
 
 		double x_scale;
 		double y_scale;
+		double y_scale_log;
 
 		double x_scroll;
 		double y_scroll;
