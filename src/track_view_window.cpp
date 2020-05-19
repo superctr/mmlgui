@@ -1,12 +1,28 @@
 /*
 	Track view window
 
+	currently implemented:
+		- drag to y-zoom
+		- note labels (simple)
 	todo:
-		- Note labels
+		- outlined note borders (?)
+			- not sure if i want this anymore, the current "flat" design looks consistent
+			- always draw left/right border
+			- if note is tie or slur, don't draw top border
+			- buffer the bottom border
+				- note is tie or slur, don't draw bottom border of last note or top border of this note
+				- otherwise, draw top border of this note
+				- if there is a rest, draw bottom border of last note
+		- channel name indicator
+			- should be displayed at top
+			- single click fast to mute
+			- double click to solo
+			- drag to x-scroll
 		- tooltips
-		- doubleclick to open reference in text editor
+			- show note information
+		- doubleclick a note/rest to open reference in text editor
 		- handle time signature / realign measure lines..
-
+		- scroll wheel to y-zoom
 */
 
 #include "track_view_window.h"
@@ -251,8 +267,6 @@ void Track_View_Window::draw_tracks()
 		// draw each event
 		for(int i=0; i<max_objs_per_column; i++)
 		{
-			if(y > canvas_size.y)
-				break;
 			if(it == info.events.end())
 			{
 				// go back to loop point if possible
@@ -260,6 +274,17 @@ void Track_View_Window::draw_tracks()
 					it = info.events.lower_bound(info.loop_start);
 				else
 					break;
+			}
+			if(y > canvas_size.y)
+			{
+				if(it->second.on_time)
+				{
+					double x1 = canvas_pos.x + std::floor(x);
+					double x2 = canvas_pos.x + std::floor(x + track_width);
+					double y1 = canvas_pos.y + std::floor(y);
+					draw_event_border(x1, x2, y1, it->second);
+				}
+				break;
 			}
 			y = draw_event(x, y, it->first, it->second);
 			it++;
@@ -283,6 +308,8 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 	// draw the note
 	if(event.on_time)
 	{
+		draw_event_border(x1, x2, y1, event);
+
 		draw_list->AddRectFilled(
 			ImVec2(x1,y1),
 			ImVec2(x2,y2),
@@ -316,6 +343,20 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 	}
 
 	return y + (event.on_time + event.off_time) * y_scale;
+}
+
+void Track_View_Window::draw_event_border(double x1, double x2, double y, const Track_Info::Ext_Event& event)
+{
+	int border_width = y_scale * 0.55;
+
+	// draw a border before the note if we're not a slur or tie
+	if(!event.is_tie && !event.is_slur && border_width)
+	{
+		draw_list->AddRectFilled(
+			ImVec2(x1,y-border_width),
+			ImVec2(x2,y),
+			IM_COL32(0, 0, 0, 255));
+	}
 }
 
 //! Get the note name

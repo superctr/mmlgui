@@ -26,11 +26,12 @@ Track_Info_Generator::Track_Info_Generator(Song& song, Track& track)
 void Track_Info_Generator::write_event()
 {
 	// Insert event
-	if(event.type == Event::NOTE || event.type == Event::TIE || event.type == Event::REST)
+	if((event.type == Event::NOTE || event.type == Event::TIE || event.type == Event::REST) &&
+		(on_time || off_time) )
 	{
 		// Fill the ext_event
 		Track_Info::Ext_Event ext;
-		ext.note = event.param;
+		ext.note = event.param + get_var(Event::TRANSPOSE);
 		ext.on_time = on_time;
 		ext.is_tie = (event.type == Event::TIE);
 		ext.is_slur = slur_flag;

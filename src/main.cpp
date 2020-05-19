@@ -2,6 +2,7 @@
 #include <vgm/audio/AudioStream.h>
 
 #include "main_window.h"
+#include "window_type.h"
 
 // dear imgui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
 // If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
@@ -11,6 +12,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <stdio.h>
+#include <csignal>
+#include <cstdlib>
 
 // About Desktop OpenGL function loaders:
 //	Modern desktop OpenGL doesn't have a standard portable header file to load OpenGL function pointers.
@@ -45,6 +48,16 @@ using namespace gl;
 #if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
+
+// Our state
+Main_Window main_window;
+
+static void sigsegv_handler(int signal)
+{
+	// dump MML files to stderr (todo: save them to a file)
+	fprintf(stderr, "Dump state:\n%s", main_window.dump_state_all().c_str());
+	std::abort();
+}
 
 static void glfw_error_callback(int error, const char* description)
 {
@@ -134,8 +147,7 @@ int main(int, char**)
 	//ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
 	//IM_ASSERT(font != NULL);
 
-	// Our state
-	Main_Window main_window;
+	std::signal(SIGSEGV, sigsegv_handler);
 
 	ImVec4 clear_color = ImVec4(0.06f, 0.11f, 0.20f, 1.00f);
 

@@ -407,3 +407,11 @@ void Editor_Window::get_compile_result()
 			break;
 	}
 }
+
+std::string Editor_Window::dump_state()
+{
+	std::string str = "filename: " + filename + "\n";
+	str += "modified: " + std::to_string(test_flag(MODIFIED)) + "\n";
+	str += "contents:\n" + editor.GetText() + "\nend contents\n";
+	return str;
+}

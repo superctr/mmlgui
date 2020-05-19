@@ -1,5 +1,6 @@
 #include "window.h"
 #include <stdio.h>
+#include <string>
 
 uint32_t Window::id_counter = 0; // next window's ID
 bool Window::modal_open = 0;     // indicates if a modal is open, since imgui can
@@ -101,3 +102,20 @@ void Window::clear_close_request()
 	close_req_state = Window::NO_CLOSE_REQUEST;
 }
 
+//! Dump state of this window and all children
+std::string Window::dump_state_all()
+{
+	std::string str;
+	for(auto i = children.begin(); i != children.end(); i++)
+	{
+		if(i->get()->active)
+			str += "child " + std::string(typeid(*i->get()).name()) + ":\n" + i->get()->dump_state_all();
+	}
+	return str + dump_state();
+}
+
+//! Dump window state (for debugging)
+std::string Window::dump_state()
+{
+	return "";
+}

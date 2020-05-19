@@ -2,6 +2,14 @@
 #include "main_window.h"
 #include "editor_window.h"
 
+#include <iostream>
+#include <csignal>
+#include "editor_window.h"
+
+//=====================================================================
+// only for debug
+extern Main_Window main_window;
+
 //=====================================================================
 FPS_Overlay::FPS_Overlay()
 {
@@ -29,6 +37,7 @@ void FPS_Overlay::display()
 		if (ImGui::BeginPopupContextWindow())
 		{
 			if (ImGui::MenuItem("Debug metrics",    NULL, show_metrics)) show_metrics ^= 1;
+			if (ImGui::MenuItem("Debug state"))     std::cerr << main_window.dump_state_all() << "\n";
 			if (ImGui::BeginMenu("Overlay"))
 			{
 				if (ImGui::MenuItem("Custom",       NULL, corner == -1)) corner = -1;

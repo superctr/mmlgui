@@ -17,6 +17,7 @@ class Editor_Window : public Window
 
 		void display() override;
 		void close_request() override;
+		std::string dump_state() override;
 
 	private:
 		const char* default_filename = "Untitled.mml";

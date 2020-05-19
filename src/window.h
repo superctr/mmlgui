@@ -4,6 +4,7 @@
 #include "window_type.h"
 #include <vector>
 #include <memory>
+#include <string>
 
 //! Abstract window class
 class Window
@@ -44,6 +45,9 @@ class Window
 		virtual void close_request();
 		virtual Close_Request_State get_close_request();
 		void clear_close_request();
+
+		virtual std::string dump_state();
+		std::string dump_state_all();
 };
 
 #endif //WINDOW_H
