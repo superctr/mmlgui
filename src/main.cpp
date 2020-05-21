@@ -1,8 +1,5 @@
-// this include is just a test to ensure that libvgm headers are found
-#include <vgm/audio/AudioStream.h>
-
 #include "main_window.h"
-#include "window_type.h"
+#include "audio_manager.h"
 
 // dear imgui: standalone example application for GLFW + OpenGL 3, using programmable pipeline
 // If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
@@ -58,6 +55,7 @@ using namespace gl;
 // Our state
 Main_Window main_window;
 
+
 static void sig_handler(int signal)
 {
 	// dump current editor state
@@ -90,6 +88,8 @@ int main(int, char**)
 	glfwSetErrorCallback(glfw_error_callback);
 	if (!glfwInit())
 		return 1;
+
+	Audio_Manager::get().set_sample_rate(44100);
 
 	// Decide GL+GLSL versions
 #if __APPLE__
@@ -216,6 +216,7 @@ int main(int, char**)
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+	Audio_Manager::get().clean_up();
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
