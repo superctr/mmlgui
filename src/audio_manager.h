@@ -1,10 +1,12 @@
 #ifndef AUDIO_MANAGER_H
 #define AUDIO_MANAGER_H
 
-#include <vgm/audio/AudioStream.h>
-
 #include <memory>
 #include <vector>
+#include <map>
+#include <string>
+
+#include <vgm/audio/AudioStream.h>
 
 //! Abstract class for audio stream control
 class Audio_Stream
@@ -76,6 +78,8 @@ class Audio_Manager
 		void set_audio_enabled(bool status);
 		bool get_audio_enabled() const;
 
+		void set_window_handle(void* new_handle);
+
 		int set_sample_rate(uint32_t new_sample_rate);
 		void set_volume(float new_volume);
 		float get_volume() const;
@@ -87,12 +91,28 @@ class Audio_Manager
 	private:
 		Audio_Manager();
 
+		void enumerate_drivers();
+		void enumerate_devices();
+		int open_driver();
+		void close_driver();
+
 		bool audio_enabled;
+
+		int driver_id;
+		int device_id;
 		uint32_t sample_rate;
 
 		float volume;
 		uint32_t converted_volume;
 		std::vector<std::shared_ptr<Audio_Stream>> streams;
+
+		void* window_handle;
+		void* driver_handle;
+
+		bool waiting_for_handle;
+		bool driver_opened;
+		std::map<int, std::string> driver_names;
+		std::map<int, std::string> device_names;
 };
 
 #endif
