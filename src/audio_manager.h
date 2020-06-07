@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <string>
+#include <mutex>
 
 #include <vgm/audio/AudioStream.h>
 
@@ -16,26 +17,27 @@ class Audio_Stream
 			: finished(false)
 		{}
 
-		virtual ~Audio_Stream();
+		inline virtual ~Audio_Stream()
+		{}
 
 		//! called by Audio_Manager when starting the stream.
 		/*!
 		 *  setup your resamplers and stuff here.
 		 */
-		virtual void setup_stream(uint32_t sample_rate);
+		virtual void setup_stream(uint32_t sample_rate) = 0;
 
 		//! called by Audio_Manager during stream update.
 		/*!
-		 *  set finished to true to indicate that the stream should be stopped.
+		 *  return zero to indicate that the stream should be stopped.
 		 */
-		virtual int32_t get_sample();
+		virtual int get_sample(uint32_t* output, int count, int channels) = 0;
 
 		//! called by Audio_Manager when stopping the stream.
 		/*!
 		 *  resamplers should be cleaned up, but the playback may start again
 		 *  so the "finished" state should not be updated here.
 		 */
-		virtual void stop_stream();
+		virtual void stop_stream() = 0;
 
 		//! get the "finished" flag status
 		/*!
@@ -93,8 +95,14 @@ class Audio_Manager
 
 		void enumerate_drivers();
 		void enumerate_devices();
+
 		int open_driver();
 		void close_driver();
+
+		int open_device();
+		void close_device();
+
+		static uint32_t callback(void* drv_struct, void* user_param, uint32_t buf_size, void* data);
 
 		bool audio_enabled;
 
@@ -111,8 +119,12 @@ class Audio_Manager
 
 		bool waiting_for_handle;
 		bool driver_opened;
+		bool device_opened;
+
 		std::map<int, std::string> driver_names;
 		std::map<int, std::string> device_names;
+
+		std::mutex mutex;
 };
 
 #endif

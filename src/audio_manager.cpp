@@ -1,5 +1,6 @@
 #include "audio_manager.h"
 #include <stdio.h>
+#include <cstring>
 
 #include <vgm/audio/AudioStream.h>
 #include <vgm/audio/AudioStream_SpcDrvFuns.h>
@@ -11,11 +12,13 @@ Audio_Manager::Audio_Manager()
 	, device_id(-1)
 	, sample_rate(44100)
 	, volume(1.0)
-	, converted_volume(0x10000)
+	, converted_volume(0x100)
 	, streams()
 	, window_handle(nullptr)
 	, driver_handle(nullptr)
 	, waiting_for_handle(false)
+	, driver_opened(false)
+	, device_opened(false)
 	, driver_names()
 	, device_names()
 {
@@ -33,6 +36,10 @@ Audio_Manager::Audio_Manager()
 	if(open_driver())
 	{
 		set_audio_enabled(false);
+	}
+	if(driver_opened)
+	{
+		open_device();
 	}
 }
 
@@ -63,9 +70,11 @@ void Audio_Manager::set_window_handle(void* new_handle)
 	{
 		waiting_for_handle = false;
 		if(open_driver())
-		{
 			set_audio_enabled(false);
-		}
+	}
+	if(driver_opened)
+	{
+		open_device();
 	}
 }
 
@@ -79,6 +88,7 @@ void Audio_Manager::set_window_handle(void* new_handle)
  */
 int Audio_Manager::set_sample_rate(uint32_t new_sample_rate)
 {
+	std::lock_guard<std::mutex> lock(mutex);
 	sample_rate = new_sample_rate;
 	return 0;
 }
@@ -87,6 +97,7 @@ int Audio_Manager::set_sample_rate(uint32_t new_sample_rate)
 void Audio_Manager::set_volume(float new_volume)
 {
 	volume = volume;
+	converted_volume = volume * 256.0;
 }
 
 //! Get global volume
@@ -104,6 +115,7 @@ int Audio_Manager::add_stream(std::shared_ptr<Audio_Stream>& stream)
 //! Kill all streams and close audio system
 void Audio_Manager::clean_up()
 {
+	std::lock_guard<std::mutex> lock(mutex);
 	close_driver();
 	if(audio_enabled)
 		Audio_Deinit();
@@ -217,6 +229,22 @@ int Audio_Manager::open_driver()
 
 void Audio_Manager::close_driver()
 {
+	if(device_opened)
+		close_device();
 	if(driver_opened)
 		AudioDrv_Deinit(&driver_handle);
 }
+
+int Audio_Manager::open_device()
+{
+	return -1;
+}
+
+void Audio_Manager::close_device()
+{
+}
+
+uint32_t Audio_Manager::callback(void* drv_struct, void* user_param, uint32_t buf_size, void* data)
+{
+}
+

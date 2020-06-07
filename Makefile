@@ -43,7 +43,8 @@ MMLGUI_OBJS = \
 	$(OBJ)/song_manager.o \
 	$(OBJ)/track_info.o \
 	$(OBJ)/track_view_window.o \
-	$(OBJ)/audio_manager.o
+	$(OBJ)/audio_manager.o \
+	$(OBJ)/emu_player.o
 
 LDFLAGS_MMLGUI := $(LDFLAGS_IMGUI) $(LDFLAGS_CTRMML) $(LDFLAGS_LIBVGM)
 

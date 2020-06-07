@@ -44,6 +44,7 @@ Editor_Window::Editor_Window()
 	: editor()
 	, filename(default_filename)
 	, flag(RECOMPILE)
+	, player(nullptr)
 {
 	type = WT_EDITOR;
 	editor.SetColorizerEnable(false); // disable syntax highlighting for now
@@ -185,16 +186,21 @@ void Editor_Window::display()
 			keep_open = false;
 	}
 
-	ImGui::Spacing();
-	ImGui::Text("%6d/%-6d %6d line%c  | %s |", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), (editor.GetTotalLines() == 1) ? ' ' : 's',
+	//ImGui::Spacing();
+	ImGui::AlignTextToFramePadding();
+	ImGui::Text("%6d/%-6d %6d line%c  | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), (editor.GetTotalLines() == 1) ? ' ' : 's',
 		editor.IsOverwrite() ? "Ovr" : "Ins");
 
-	get_compile_result();
+	//get_compile_result();
+	show_player_controls();
 
 	ImGui::End();
 
 	if(!keep_open)
 		close_request_all();
+
+	if(player_error.size() && !modal_open)
+		show_player_error();
 
 	if(get_close_request() == Window::CLOSE_IN_PROGRESS && !modal_open)
 		show_close_warning();
@@ -211,6 +217,33 @@ void Editor_Window::close_request()
 		close_req_state = Window::CLOSE_IN_PROGRESS;
 	else
 		close_req_state = Window::CLOSE_OK;
+}
+
+void Editor_Window::play_song()
+{
+}
+
+void Editor_Window::stop_song()
+{
+}
+
+void Editor_Window::show_player_error()
+{
+	modal_open = 1;
+	std::string modal_id;
+	modal_id = get_display_filename() + "###modal";
+	if (!ImGui::IsPopupOpen(modal_id.c_str()))
+		ImGui::OpenPopup(modal_id.c_str());
+	if(ImGui::BeginPopupModal(modal_id.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Text("Could not play back");
+		ImGui::Text("%s\n", player_error.c_str());
+		ImGui::Separator();
+
+		ImGui::SetItemDefaultFocus();
+		if (ImGui::Button("OK", ImVec2(120, 0)))
+			ImGui::CloseCurrentPopup();
+	}
 }
 
 void Editor_Window::show_close_warning()
@@ -380,6 +413,73 @@ std::string Editor_Window::get_display_filename()
 		return filename.substr(pos+1);
 	else
 		return filename;
+}
+
+// move this to top?
+void Editor_Window::show_player_controls()
+{
+	auto result = song_manager->get_compile_result();
+
+	ImGui::SameLine();
+	float content = ImGui::GetContentRegionMax().x;
+	//float offset = content * 0.4f;	// with progress bar
+	float offset = content * 0.75f;		// without progress bar
+	float width = content - offset;
+	float curpos = ImGui::GetCursorPos().x;
+	if(offset < curpos)
+		offset = curpos;
+	ImGui::SetCursorPosX(offset);
+
+	// PushNextItemWidth doesn't work for some stupid reason, width must be set manually
+	auto size = ImVec2(content * 0.1f, 0);
+	if(size.x < ImGui::GetFontSize() * 4.0f)
+		size.x = ImGui::GetFontSize() * 4.0f;
+
+	// Handle play button (also indicates compile errors)
+	if(result != Song_Manager::COMPILE_OK)
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 0.6f);
+		if(result == Song_Manager::COMPILE_NOT_DONE)
+		{
+			ImGui::Button("Wait", size);
+		}
+		else if(result == Song_Manager::COMPILE_ERROR)
+		{
+			ImGui::Button("Error", size);
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::PushStyleVar(ImGuiStyleVar_Alpha, 1.0f);
+				ImGui::BeginTooltip();
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(song_manager->get_error_message().c_str());
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+				ImGui::PopStyleVar();
+			}
+		}
+		ImGui::PopStyleVar();
+	}
+	else
+	{
+		if(ImGui::Button("Play", size))
+		{
+			play_song();
+		}
+	}
+	// Handle stop button
+	ImGui::SameLine();
+	if (ImGui::Button("Stop", size))
+	{
+		stop_song();
+	}
+
+/*
+	// Handle a progress bar. Just dummy for now
+	float bar_test = width / content;
+	ImGui::SameLine();
+	size = ImVec2(ImGui::GetContentRegionAvail().x, 0);
+	ImGui::ProgressBar(bar_test, size);
+*/
 }
 
 void Editor_Window::get_compile_result()
