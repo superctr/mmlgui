@@ -17,6 +17,7 @@
 		2. file dialog has no keyboard controls at all :/
 */
 
+#include "audio_manager.h"
 #include "editor_window.h"
 #include "track_view_window.h"
 
@@ -221,10 +222,25 @@ void Editor_Window::close_request()
 
 void Editor_Window::play_song()
 {
+	try
+	{
+		Audio_Manager& am = Audio_Manager::get();
+		player = std::make_shared<Emu_Player>(song_manager->get_song());
+		am.add_stream(std::static_pointer_cast<Audio_Stream>(player));
+	}
+	catch(std::exception& except)
+	{
+		player_error = "exception";
+		player_error += except.what();
+	}
 }
 
 void Editor_Window::stop_song()
 {
+	if(player.get() != nullptr)
+	{
+		player->set_finished(true);
+	}
 }
 
 void Editor_Window::show_player_error()
@@ -242,7 +258,10 @@ void Editor_Window::show_player_error()
 
 		ImGui::SetItemDefaultFocus();
 		if (ImGui::Button("OK", ImVec2(120, 0)))
+		{
+			player_error = "";
 			ImGui::CloseCurrentPopup();
+		}
 	}
 }
 

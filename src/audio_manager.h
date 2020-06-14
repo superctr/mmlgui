@@ -8,6 +8,7 @@
 #include <mutex>
 
 #include <vgm/audio/AudioStream.h>
+#include <vgm/emu/Resampler.h>
 
 //! Abstract class for audio stream control
 class Audio_Stream
@@ -30,7 +31,7 @@ class Audio_Stream
 		/*!
 		 *  return zero to indicate that the stream should be stopped.
 		 */
-		virtual int get_sample(uint32_t* output, int count, int channels) = 0;
+		virtual int get_sample(WAVE_32BS* output, int count, int channels) = 0;
 
 		//! called by Audio_Manager when stopping the stream.
 		/*!
@@ -49,12 +50,12 @@ class Audio_Stream
 			finished = true;
 		}
 
-		//! set the "finished" flag status
+		//! get the "finished" flag status
 		/*!
 		 *  when set, the audio manager will stop mixing this stream and
 		 *  destroy its pointer.
 		 */
-		inline bool get_finished(bool flag)
+		inline bool get_finished()
 		{
 			return finished;
 		}
@@ -86,7 +87,7 @@ class Audio_Manager
 		void set_volume(float new_volume);
 		float get_volume() const;
 
-		int add_stream(std::shared_ptr<Audio_Stream>& stream);
+		int add_stream(std::shared_ptr<Audio_Stream> stream);
 
 		void clean_up();
 
@@ -109,6 +110,7 @@ class Audio_Manager
 		int driver_id;
 		int device_id;
 		uint32_t sample_rate;
+		uint32_t sample_size;
 
 		float volume;
 		uint32_t converted_volume;

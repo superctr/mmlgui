@@ -1,5 +1,9 @@
 #include "audio_manager.h"
+
+// for debug output
 #include <stdio.h>
+#include <typeinfo>
+
 #include <cstring>
 
 #include <vgm/audio/AudioStream.h>
@@ -11,6 +15,7 @@ Audio_Manager::Audio_Manager()
 	, driver_id(-1)
 	, device_id(-1)
 	, sample_rate(44100)
+	, sample_size(4)
 	, volume(1.0)
 	, converted_volume(0x100)
 	, streams()
@@ -72,7 +77,7 @@ void Audio_Manager::set_window_handle(void* new_handle)
 		if(open_driver())
 			set_audio_enabled(false);
 	}
-	if(driver_opened)
+	if(driver_opened && !device_opened)
 	{
 		open_device();
 	}
@@ -88,6 +93,7 @@ void Audio_Manager::set_window_handle(void* new_handle)
  */
 int Audio_Manager::set_sample_rate(uint32_t new_sample_rate)
 {
+	// TODO: reinit streams
 	std::lock_guard<std::mutex> lock(mutex);
 	sample_rate = new_sample_rate;
 	return 0;
@@ -107,15 +113,18 @@ float Audio_Manager::get_volume() const
 }
 
 //! Add an audio stream
-int Audio_Manager::add_stream(std::shared_ptr<Audio_Stream>& stream)
+int Audio_Manager::add_stream(std::shared_ptr<Audio_Stream> stream)
 {
-	return -1;
+	std::lock_guard<std::mutex> lock(mutex);
+	stream->setup_stream(sample_rate);
+	printf("Adding stream %s\n", typeid(*stream).name());
+	streams.push_back(stream);
+	return 0;
 }
 
 //! Kill all streams and close audio system
 void Audio_Manager::clean_up()
 {
-	std::lock_guard<std::mutex> lock(mutex);
 	close_driver();
 	if(audio_enabled)
 		Audio_Deinit();
@@ -209,7 +218,7 @@ int Audio_Manager::open_driver()
 	error_code = AudioDrv_Init(driver_id, &driver_handle);
 	if(error_code)
 	{
-		printf("libvgm error code %02x\n", error_code);
+		printf("AudioDrv_Init error %02x\n", error_code);
 		return -1;
 	}
 
@@ -237,14 +246,74 @@ void Audio_Manager::close_driver()
 
 int Audio_Manager::open_device()
 {
-	return -1;
+	if(device_opened)
+		return -1;
+	const std::lock_guard<std::mutex> lock(mutex);
+	auto opts = AudioDrv_GetOptions(driver_handle);
+	opts->numChannels = 2;
+	opts->numBitsPerSmpl = 16;
+	sample_size = opts->numChannels * opts->numBitsPerSmpl / 8;
+	AudioDrv_SetCallback(driver_handle, Audio_Manager::callback, NULL);
+	int error_code = AudioDrv_Start(driver_handle, device_id);
+	if(error_code)
+	{
+		printf("AudioDrv_Start error %02x\n", error_code);
+		return -1;
+	}
+	device_opened = true;
+	return 0;
 }
 
 void Audio_Manager::close_device()
 {
+	const std::lock_guard<std::mutex> lock(mutex);
+	AudioDrv_Stop(driver_handle);
+	device_opened = false;
 }
 
 uint32_t Audio_Manager::callback(void* drv_struct, void* user_param, uint32_t buf_size, void* data)
 {
+	Audio_Manager& am = Audio_Manager::get();
+	int sample_count = buf_size / am.sample_size;
+	std::vector<WAVE_32BS> buffer(sample_count, {0, 0});
+	const std::lock_guard<std::mutex> lock(am.mutex);
+
+	// Input buffer
+	for(auto stream = am.streams.begin(); stream != am.streams.end();)
+	{
+		Audio_Stream* s = stream->get();
+		s->get_sample(buffer.data(), sample_count, 2);
+		if(s->get_finished())
+		{
+			printf("Removing stream %s\n", typeid(*s).name());
+			s->stop_stream();
+			am.streams.erase(stream);
+		}
+		else
+		{
+			stream++;
+		}
+	}
+
+	// Output buffer
+	switch(am.sample_size)
+	{
+		case 4:
+		{
+			uint16_t* sd = (uint16_t*) data;
+			for(int i = 0; i < sample_count; i ++)
+			{
+				uint32_t l = buffer[i].L >> 8;
+				uint32_t r = buffer[i].R >> 8;
+				*sd++ = (l * am.converted_volume) >> 8;
+				*sd++ = (r * am.converted_volume) >> 8;
+			}
+			return sample_count * am.sample_size;
+		}
+		default:
+		{
+			return 0;
+		}
+	}
 }
 

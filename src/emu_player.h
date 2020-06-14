@@ -45,11 +45,11 @@ class Emu_Player
 	, public Audio_Stream
 {
 	public:
-		Emu_Player(std::shared_ptr<Song>& song);
+		Emu_Player(std::shared_ptr<Song> song);
 		virtual ~Emu_Player();
 
 		void setup_stream(uint32_t sample_rate);
-		int get_sample(uint32_t* output, int count, int channels);
+		int get_sample(WAVE_32BS* output, int count, int channels);
 		void stop_stream();
 
 	private:

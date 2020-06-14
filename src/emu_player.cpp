@@ -42,7 +42,7 @@ void Device_Wrapper::write(uint16_t addr, uint16_t data)
 
 //=====================================================================
 
-Emu_Player::Emu_Player(std::shared_ptr<Song>& song)
+Emu_Player::Emu_Player(std::shared_ptr<Song> song)
 {
 }
 
@@ -59,7 +59,7 @@ void Emu_Player::setup_stream(uint32_t sample_rate)
 {
 }
 
-int Emu_Player::get_sample(uint32_t* output, int count, int channels)
+int Emu_Player::get_sample(WAVE_32BS* output, int count, int channels)
 {
 	return 0;
 }
