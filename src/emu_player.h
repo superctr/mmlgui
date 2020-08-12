@@ -92,6 +92,7 @@ class Emu_Player
 		std::map<int, std::vector<uint8_t>> datablocks;
 
 		std::shared_ptr<Driver> driver;
+		std::shared_ptr<Song> song;
 };
 
 #endif

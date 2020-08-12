@@ -128,6 +128,7 @@ Emu_Player::Emu_Player(std::shared_ptr<Song> song)
 	, sample_delta(1)
 	, play_time(0)
 	, play_time2(0)
+	, song(song)
 {
 	printf("Emu_Player created\n");
 
