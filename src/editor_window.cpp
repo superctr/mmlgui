@@ -228,9 +228,15 @@ void Editor_Window::play_song()
 		player = std::make_shared<Emu_Player>(song_manager->get_song());
 		am.add_stream(std::static_pointer_cast<Audio_Stream>(player));
 	}
+	catch(InputError& except)
+	{
+		player_error += except.what();
+	}
 	catch(std::exception& except)
 	{
-		player_error = "exception";
+		player_error = "exception type: ";
+		player_error += typeid(except).name();
+		player_error = "\nexception message: ";
 		player_error += except.what();
 	}
 }
@@ -262,6 +268,7 @@ void Editor_Window::show_player_error()
 			player_error = "";
 			ImGui::CloseCurrentPopup();
 		}
+		ImGui::EndPopup();
 	}
 }
 
@@ -482,6 +489,7 @@ void Editor_Window::show_player_controls()
 	{
 		if(ImGui::Button("Play", size))
 		{
+			stop_song();
 			play_song();
 		}
 	}

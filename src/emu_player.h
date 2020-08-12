@@ -11,7 +11,7 @@
 
 #include "audio_manager.h"
 #include "vgm.h"
-
+#include "driver.h"
 
 class Device_Wrapper
 {
@@ -19,21 +19,31 @@ class Device_Wrapper
 		Device_Wrapper();
 		virtual ~Device_Wrapper();
 
-		void set_rate(uint32_t rate, uint16_t volume);
-		void reset_resampler();
+		void set_default_volume(uint16_t vol);
 
-		void setup_sn76489(uint32_t freq,
-			int16_t volume = 0x100,
+		void set_rate(uint32_t rate);
+
+		void init_sn76489(uint32_t freq,
 			uint8_t lfsr_w = 0x10,
 			uint16_t lfsr_t = 0x09);
 
 		void write(uint16_t addr, uint16_t data);
 
-	private:
-		DEV_INFO* dev;
-		RESMPL_STATE* resmpl;
+		void get_sample(WAVE_32BS* output, int count);
 
-		bool started;
+	private:
+		DEV_INFO dev;
+		RESMPL_STATE resmpl;
+
+		bool dev_init;
+		bool resmpl_init;
+
+		enum {
+			NONE = 0,
+			A8D8,
+			P1A8D8,
+		} write_type;
+
 		uint32_t sample_rate;
 		uint16_t volume;
 		DEVFUNC_WRITE_A8D8 write_a8d8;
@@ -53,6 +63,7 @@ class Emu_Player
 		void stop_stream();
 
 	private:
+		void handle_error(const char* str);
 		void write(uint8_t command, uint16_t port, uint16_t reg, uint16_t data);
 		void dac_setup(uint8_t sid, uint8_t chip_id, uint32_t port, uint32_t reg, uint8_t db_id);
 		void dac_start(uint8_t sid, uint32_t start, uint32_t length, uint32_t freq);
@@ -72,10 +83,15 @@ class Emu_Player
 			uint32_t offset = 0);
 
 		int sample_rate;
+		float delta_time;
+		float sample_delta;
+		float play_time;
+		float play_time2;
+
 		std::map<int, Device_Wrapper> devices;
 		std::map<int, std::vector<uint8_t>> datablocks;
 
-		float delta_time;
+		std::shared_ptr<Driver> driver;
 };
 
 #endif
