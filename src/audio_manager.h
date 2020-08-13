@@ -103,6 +103,8 @@ class Audio_Manager
 		int open_device();
 		void close_device();
 
+		static int16_t clip16(int32_t input);
+
 		static uint32_t callback(void* drv_struct, void* user_param, uint32_t buf_size, void* data);
 
 		bool audio_enabled;
@@ -113,7 +115,7 @@ class Audio_Manager
 		uint32_t sample_size;
 
 		float volume;
-		uint32_t converted_volume;
+		int32_t converted_volume;
 		std::vector<std::shared_ptr<Audio_Stream>> streams;
 
 		void* window_handle;

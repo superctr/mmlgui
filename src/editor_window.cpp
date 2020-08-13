@@ -60,7 +60,7 @@ void Editor_Window::display()
 	{
 		if(!song_manager->get_compile_in_progress())
 		{
-			if(!song_manager->compile(editor.GetText(), ""))
+			if(!song_manager->compile(editor.GetText(), filename))
 				clear_flag(RECOMPILE);
 		}
 	}

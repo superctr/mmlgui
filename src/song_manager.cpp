@@ -150,7 +150,7 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 
 		int path_break = filename.find_last_of("/\\");
 		if(path_break != -1)
-			song->add_tag("include_path", filename.substr(0, path_break + 1));
+			temp_song->add_tag("include_path", filename.substr(0, path_break + 1));
 
 		MML_Input input = MML_Input(temp_song.get());
 

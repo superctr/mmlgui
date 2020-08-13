@@ -271,6 +271,15 @@ void Audio_Manager::close_device()
 	device_opened = false;
 }
 
+inline int16_t Audio_Manager::clip16(int32_t input)
+{
+	if(input > 32767)
+		input = 32767;
+	else if(input < -32768)
+		input = -32768;
+	return input;
+}
+
 uint32_t Audio_Manager::callback(void* drv_struct, void* user_param, uint32_t buf_size, void* data)
 {
 	Audio_Manager& am = Audio_Manager::get();
@@ -300,13 +309,13 @@ uint32_t Audio_Manager::callback(void* drv_struct, void* user_param, uint32_t bu
 	{
 		case 4:
 		{
-			uint16_t* sd = (uint16_t*) data;
+			int16_t* sd = (int16_t*) data;
 			for(int i = 0; i < sample_count; i ++)
 			{
-				uint32_t l = buffer[i].L >> 8;
-				uint32_t r = buffer[i].R >> 8;
-				*sd++ = (l * am.converted_volume) >> 8;
-				*sd++ = (r * am.converted_volume) >> 8;
+				int32_t l = buffer[i].L >> 8;
+				int32_t r = buffer[i].R >> 8;
+				*sd++ = clip16((l * am.converted_volume) >> 8);
+				*sd++ = clip16((r * am.converted_volume) >> 8);
 			}
 			return sample_count * am.sample_size;
 		}

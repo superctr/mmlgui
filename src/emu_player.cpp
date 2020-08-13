@@ -10,6 +10,7 @@
 
 #include <cstdlib>
 #include <stdexcept>
+#include <algorithm>
 
 using std::malloc;
 using std::free;
@@ -68,7 +69,7 @@ void Device_Wrapper::set_rate(uint32_t rate)
 
 void Device_Wrapper::init_sn76489(uint32_t freq, uint8_t lfsr_w, uint16_t lfsr_t)
 {
-	printf("init emu (sn76489)\n");
+	printf("init emu (sn76489 @ %d Hz)\n", freq);
 	DEV_GEN_CFG dev_cfg;
 	SN76496_CFG sn_cfg;
 
@@ -98,6 +99,29 @@ void Device_Wrapper::init_sn76489(uint32_t freq, uint8_t lfsr_w, uint16_t lfsr_t
 	dev_init = true;
 }
 
+void Device_Wrapper::init_ym2612(uint32_t freq)
+{
+	printf("init emu (ym2612 @ %d Hz)\n", freq);
+	DEV_GEN_CFG dev_cfg;
+
+	dev_cfg.emuCore = 0;
+	dev_cfg.srMode = DEVRI_SRMODE_NATIVE;
+	dev_cfg.flags = 0x00;
+	dev_cfg.clock = freq;
+	dev_cfg.smplRate = 44100;
+
+	uint8_t status = SndEmu_Start(DEVID_YM2612, (DEV_GEN_CFG*)&dev_cfg, &dev);
+	if(status)
+		throw std::runtime_error("Device_Wrapper::init_ym2612");
+
+	SndEmu_GetDeviceFunc(dev.devDef, RWF_REGISTER | RWF_WRITE, DEVRW_A8D8, 0, (void**)&write_a8d8);
+	write_type = Device_Wrapper::P1A8D8;
+
+	dev.devDef->Reset(dev.dataPtr);
+
+	dev_init = true;
+}
+
 inline void Device_Wrapper::write(uint16_t addr, uint16_t data)
 {
 	switch(write_type)
@@ -107,9 +131,19 @@ inline void Device_Wrapper::write(uint16_t addr, uint16_t data)
 		case Device_Wrapper::A8D8:
 			write_a8d8(dev.dataPtr, addr, data);
 			break;
+	}
+}
+
+inline void Device_Wrapper::write(uint8_t port, uint16_t addr, uint16_t data)
+{
+	switch(write_type)
+	{
+		default:
+			write(addr, data);
+			break;
 		case Device_Wrapper::P1A8D8:
-			write_a8d8(dev.dataPtr, (addr & 0x100) ? 0 : 2, addr & 0xff);
-			write_a8d8(dev.dataPtr, (addr & 0x100) ? 1 : 3, data);
+			write_a8d8(dev.dataPtr, (port << 1), addr);
+			write_a8d8(dev.dataPtr, (port << 1) + 1, data);
 			break;
 	}
 }
@@ -188,7 +222,30 @@ int Emu_Player::get_sample(WAVE_32BS* output, int count, int channels)
 					break;
 			}
 
-			for(auto it = devices.begin(); it != devices.end(); it++)
+			// Update any dac streams
+			for(auto && it = streams.begin(); it != streams.end(); it++)
+			{
+				if(it->second.active)
+				{
+					it->second.counter += it->second.freq;
+					while(it->second.counter >= sample_rate)
+					{
+						devices[it->second.chip_id].write(
+								it->second.port,
+								it->second.reg,
+								datablocks[it->second.db_id][it->second.position]);
+						it->second.position ++;
+						it->second.counter -= sample_rate;
+						if(!--it->second.length)
+						{
+							it->second.active = false;
+						}
+					}
+				}
+			}
+
+			// Get sample from sound chips
+			for(auto && it = devices.begin(); it != devices.end(); it++)
 			{
 				it->second.get_sample(&output[i], 1);
 			}
@@ -232,6 +289,8 @@ void Emu_Player::write(uint8_t command, uint16_t port, uint16_t reg, uint16_t da
 		case 0x50:
 			devices[DEVID_SN76496].write(reg, data);
 			break;
+		case 0x52:
+			devices[DEVID_YM2612].write(port, reg, data);
 		default:
 			break;
 	}
@@ -239,14 +298,28 @@ void Emu_Player::write(uint8_t command, uint16_t port, uint16_t reg, uint16_t da
 
 void Emu_Player::dac_setup(uint8_t sid, uint8_t chip_id, uint32_t port, uint32_t reg, uint8_t db_id)
 {
+	//printf("Emu_Player setup stream %02x = %02x,%02x,%02x,%02x\n", sid, chip_id, port, reg, db_id);
+	streams[sid].chip_id = chip_id;
+	streams[sid].port = port;
+	streams[sid].reg = reg;
+	streams[sid].db_id = db_id;
+	streams[sid].active = false;
 }
 
 void Emu_Player::dac_start(uint8_t sid, uint32_t start, uint32_t length, uint32_t freq)
 {
+	//printf("Emu_Player start stream %02x = %d,%d,%d\n", sid, start,length,freq);
+	streams[sid].position = start;
+	streams[sid].length = length;
+	streams[sid].freq = freq;
+	streams[sid].counter = sample_rate;
+	streams[sid].active = true;
 }
 
 void Emu_Player::dac_stop(uint8_t sid)
 {
+	//printf("Emu_Player stop stream %02x\n", sid);
+	streams[sid].active = false;
 }
 
 //! Initialize sound chip.
@@ -258,11 +331,11 @@ void Emu_Player::poke32(uint32_t offset, uint32_t data)
 	switch(offset)
 	{
 		case 0x0c:
-			printf("SN76489 initialize = %d Hz\n", clock);
+			devices[DEVID_SN76496].set_default_volume(0x80);
 			devices[DEVID_SN76496].init_sn76489(clock);
 			break;
 		case 0x2c:
-			printf("YM2612 initialize = %d Hz\n", clock);
+			devices[DEVID_YM2612].init_ym2612(clock);
 			break;
 		default:
 			printf("Emu_Player poke %02x = %08x\n", offset, data);
@@ -294,5 +367,11 @@ void Emu_Player::stop()
 void Emu_Player::datablock(uint8_t dbtype, uint32_t dbsize, const uint8_t* db, uint32_t maxsize, uint32_t mask,
 	uint32_t flags, uint32_t offset)
 {
-	printf("Emu_Player datablock %02x = %d\n", dbtype, dbsize);
+#if 0
+	printf("Emu_Player datablock %02x = size %d, maxsize = %d, mask = %08x, flags = %08x, offset = %08x\n",
+			dbtype,
+			dbsize, maxsize, mask, flags, offset);
+#endif
+	datablocks[dbtype].resize(maxsize);
+	std::copy_n(db, dbsize, datablocks[dbtype].begin() + offset);
 }

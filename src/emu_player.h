@@ -27,7 +27,10 @@ class Device_Wrapper
 			uint8_t lfsr_w = 0x10,
 			uint16_t lfsr_t = 0x09);
 
+		void init_ym2612(uint32_t freq);
+
 		void write(uint16_t addr, uint16_t data);
+		void write(uint8_t port, uint16_t reg, uint16_t data);
 
 		void get_sample(WAVE_32BS* output, int count);
 
@@ -48,7 +51,6 @@ class Device_Wrapper
 		uint16_t volume;
 		DEVFUNC_WRITE_A8D8 write_a8d8;
 };
-
 
 class Emu_Player
 	: private VGM_Interface
@@ -82,6 +84,19 @@ class Emu_Player
 			uint32_t flags = 0,
 			uint32_t offset = 0);
 
+		struct Stream
+		{
+			uint8_t chip_id;
+			uint8_t port;
+			uint8_t reg;
+			uint8_t db_id;
+			bool active;
+			uint32_t position;
+			uint32_t length;
+			uint32_t freq;
+			int32_t counter;
+		};
+
 		int sample_rate;
 		float delta_time;
 		float sample_delta;
@@ -90,6 +105,7 @@ class Emu_Player
 
 		std::map<int, Device_Wrapper> devices;
 		std::map<int, std::vector<uint8_t>> datablocks;
+		std::map<int, Stream> streams;
 
 		std::shared_ptr<Driver> driver;
 		std::shared_ptr<Song> song;
