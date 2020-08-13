@@ -2,6 +2,7 @@
 #define TRACK_INFO_H
 
 #include <map>
+#include <memory>
 
 #include "player.h"
 
@@ -23,6 +24,8 @@ struct Track_Info
 		int16_t transpose;
 		uint16_t pitch_envelope;
 		uint16_t portamento;
+
+		std::vector<std::shared_ptr<InputRef>> references;
 	};
 
 	std::map<int, Ext_Event> events;

@@ -168,6 +168,8 @@ void Editor_Window::display()
 	if (ImGui::IsWindowFocused())
 		ImGui::SetNextWindowFocus();
 
+	show_track_positions();
+
 	GLFWerrorfun prev_error_callback = glfwSetErrorCallback(NULL); // disable clipboard error messages...
 
 	editor.Render("EditorArea", ImVec2(0, -ImGui::GetFrameHeight()));
@@ -548,4 +550,45 @@ std::string Editor_Window::dump_state()
 	str += "modified: " + std::to_string(test_flag(MODIFIED)) + "\n";
 	str += "contents:\n" + editor.GetText() + "\nend contents\n";
 	return str;
+}
+
+void  Editor_Window::show_track_positions()
+{
+	std::map<int, std::unordered_set<int>> track_positions = {};
+	std::map<int, Track_Info> map = {};
+	unsigned int ticks = 0;
+
+	auto tracks = song_manager->get_tracks();
+	if(tracks != nullptr)
+		map = *tracks;
+
+	auto player = song_manager->get_player();
+	if(player != nullptr && !player->get_finished())
+		ticks = player->get_driver()->get_player_ticks();
+
+	for(auto track_it = map.begin(); track_it != map.end(); track_it++)
+	{
+		auto& info = track_it->second;
+		int offset = 0;
+
+		// calculate offset to first loop
+		if(ticks > info.length && info.loop_length)
+			offset = ((ticks - info.loop_start) / info.loop_length) * info.loop_length;
+
+		// calculate position
+		auto it = info.events.lower_bound(ticks - offset);
+		if(it != info.events.begin())
+		{
+			--it;
+			auto event = it->second;
+			for(auto && i : event.references)
+			{
+				if(!i->get_filename().size())
+				{
+					track_positions[i->get_line()].insert(i->get_column());
+				}
+			}
+		}
+	}
+	editor.SetMmlHighlights(track_positions);
 }

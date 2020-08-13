@@ -37,6 +37,7 @@ class Editor_Window : public Window
 		std::string get_display_filename();
 		void show_player_controls();
 		void get_compile_result();
+		void show_track_positions();
 
 		inline void set_flag(uint32_t data) { flag |= data; };
 		inline void clear_flag(uint32_t data) { flag &= ~data; };

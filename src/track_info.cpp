@@ -42,6 +42,9 @@ void Track_Info_Generator::write_event()
 		ext.transpose = get_var(Event::TRANSPOSE);
 		ext.pitch_envelope = get_var(Event::PITCH_ENVELOPE);
 		ext.portamento = get_var(Event::PORTAMENTO);
+		ext.references = get_references();
+		if(get_var(Event::DRUM_MODE))
+			ext.references.push_back(reference);
 		events.emplace_hint(events.end(), std::pair<int, Track_Info::Ext_Event>(get_play_time(), ext));
 
 		slur_flag = false;

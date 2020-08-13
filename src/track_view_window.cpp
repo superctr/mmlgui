@@ -137,7 +137,7 @@ void Track_View_Window::display()
 	if(y_follow && y_player)
 		y_pos = y_player - (canvas_size.y / 2.0) / y_scale;
 	else
-		y_pos = y_user - track_header_height;
+		y_pos = y_user - track_header_height / y_scale;
 
 	// draw background
 	draw_list->AddRectFilled(
