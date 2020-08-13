@@ -18,6 +18,7 @@ Song_Manager::Song_Manager()
 	, job_done(false)
 	, job_successful(false)
 	, song(nullptr)
+	, player(nullptr)
 {
 }
 
@@ -97,11 +98,38 @@ int Song_Manager::compile(const std::string& buffer, const std::string& filename
 	return 0;
 }
 
+//! Start song playback.
+/*!
+ *  \exception InputError Song playback errors, for example missing samples or bad data.
+ *  \exception std::exception Should always be catched to avoid data loss.
+ */
+void Song_Manager::play()
+{
+	Audio_Manager& am = Audio_Manager::get();
+	player = std::make_shared<Emu_Player>(get_song());
+	am.add_stream(std::static_pointer_cast<Audio_Stream>(player));
+}
+
+//! Stop song playback
+void Song_Manager::stop()
+{
+	if(player.get() != nullptr)
+	{
+		player->set_finished(true);
+	}
+}
+
 //! Get song data
 std::shared_ptr<Song> Song_Manager::get_song()
 {
 	std::lock_guard<std::mutex> guard(mutex);
 	return song;
+}
+
+//! Get player
+std::shared_ptr<Emu_Player> Song_Manager::get_player()
+{
+	return player;
 }
 
 //! Get track info data

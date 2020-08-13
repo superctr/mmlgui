@@ -9,6 +9,9 @@
 #include "core.h"
 #include "input.h"
 
+#include "audio_manager.h"
+#include "emu_player.h"
+
 struct Track_Info;
 
 class Song_Manager
@@ -28,8 +31,11 @@ class Song_Manager
 		bool get_compile_in_progress();
 
 		int compile(const std::string& buffer, const std::string& filename);
+		void play();
+		void stop();
 
 		std::shared_ptr<Song> get_song();
+		std::shared_ptr<Emu_Player> get_player();
 		std::shared_ptr<std::map<int,Track_Info>> get_tracks();
 		std::string get_error_message();
 
@@ -55,6 +61,9 @@ class Song_Manager
 		std::shared_ptr<std::map<int,Track_Info>> tracks;
 		std::string error_message;
 		std::shared_ptr<InputRef> error_reference;
+
+		// playback state
+		std::shared_ptr<Emu_Player> player;
 };
 
 #endif

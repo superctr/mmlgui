@@ -17,7 +17,6 @@
 		2. file dialog has no keyboard controls at all :/
 */
 
-#include "audio_manager.h"
 #include "editor_window.h"
 #include "track_view_window.h"
 
@@ -45,7 +44,6 @@ Editor_Window::Editor_Window()
 	: editor()
 	, filename(default_filename)
 	, flag(RECOMPILE)
-	, player(nullptr)
 {
 	type = WT_EDITOR;
 	editor.SetColorizerEnable(false); // disable syntax highlighting for now
@@ -239,9 +237,7 @@ void Editor_Window::play_song()
 {
 	try
 	{
-		Audio_Manager& am = Audio_Manager::get();
-		player = std::make_shared<Emu_Player>(song_manager->get_song());
-		am.add_stream(std::static_pointer_cast<Audio_Stream>(player));
+		song_manager->play();
 	}
 	catch(InputError& except)
 	{
@@ -258,10 +254,7 @@ void Editor_Window::play_song()
 
 void Editor_Window::stop_song()
 {
-	if(player.get() != nullptr)
-	{
-		player->set_finished(true);
-	}
+	song_manager->stop();
 }
 
 void Editor_Window::show_player_error()

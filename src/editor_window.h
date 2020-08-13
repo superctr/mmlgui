@@ -9,7 +9,6 @@
 
 #include "window.h"
 #include "song_manager.h"
-#include "emu_player.h"
 
 class Editor_Window : public Window
 {
@@ -49,7 +48,6 @@ class Editor_Window : public Window
 		uint32_t flag;
 		std::shared_ptr<Song_Manager> song_manager;
 
-		std::shared_ptr<Emu_Player> player;
 		std::string player_error;
 };
 

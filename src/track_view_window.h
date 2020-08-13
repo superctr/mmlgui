@@ -30,12 +30,16 @@ class Track_View_Window : public Window
 		const static double inertia_threshold;
 		const static double inertia_acceleration;
 
+		const static double track_header_height;
 		const static double ruler_width;
 		const static double track_width;
 		const static double padding_width;
 
 		void draw_ruler();
+
+		void draw_track_header();
 		void draw_tracks();
+
 		double draw_event(double x, double y, int position, const Track_Info::Ext_Event& event);
 		void draw_event_border(double x1, double x2, double y, const Track_Info::Ext_Event& event);
 
@@ -52,6 +56,9 @@ class Track_View_Window : public Window
 
 		double x_scroll;
 		double y_scroll;
+
+		bool y_follow; // If set, follow song position.
+		double y_user; // User scroll position
 
 		std::shared_ptr<Song_Manager> song_manager;
 

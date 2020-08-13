@@ -47,6 +47,8 @@ const double Track_View_Window::y_min = 0.0;
 const double Track_View_Window::inertia_threshold = 1.0;
 const double Track_View_Window::inertia_acceleration = 0.95;
 
+// height of header
+const double Track_View_Window::track_header_height = 20.0;
 // width of columns
 const double Track_View_Window::ruler_width = 25.0;
 const double Track_View_Window::track_width = 25.0;
@@ -60,6 +62,8 @@ Track_View_Window::Track_View_Window(std::shared_ptr<Song_Manager> song_mgr)
 	, y_scale_log(1.0)
 	, x_scroll(0.0)
 	, y_scroll(0.0)
+	, y_follow(true)
+	, y_user(0.0)
 	, song_manager(song_mgr)
 	, dragging(false)
 {
@@ -73,11 +77,13 @@ void Track_View_Window::display()
 	ImGui::Begin(window_id.c_str(), &active);
 	ImGui::SetWindowSize(ImVec2(550, 600), ImGuiCond_Once);
 
-	ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.3);
+	ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.2);
 
-	ImGui::InputDouble("y_pos", &y_pos, 1.0f, 1.0f, "%.2f");
+	ImGui::InputDouble("Time", &y_user, 1.0f, 1.0f, "%.2f");
 	ImGui::SameLine();
-	ImGui::InputDouble("y_scale", &y_scale_log, 0.01f, 0.1f, "%.2f");
+	ImGui::InputDouble("Scale", &y_scale_log, 0.01f, 0.1f, "%.2f");
+	ImGui::SameLine();
+	ImGui::Checkbox("Follow", &y_follow);
 	y_scale = std::pow(y_scale_log, 2);
 
 	ImGui::PopItemWidth();
@@ -109,11 +115,12 @@ void Track_View_Window::display()
 	// handle scrolling
 	if(std::abs(y_scroll) >= inertia_threshold)
 	{
-		y_pos -= y_scroll / y_scale;
+		y_user -= y_scroll / y_scale;
 		y_scroll *= inertia_acceleration;
-		if(y_pos < y_min)
-			y_pos = y_min;
+		if(y_user < y_min)
+			y_user = y_min;
 	}
+	y_pos = y_user - track_header_height;
 
 	// draw background
 	draw_list->AddRectFilled(
@@ -135,6 +142,7 @@ void Track_View_Window::display()
 		ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y),
 		true);
 	draw_tracks();
+	draw_track_header();
 	draw_list->PopClipRect();
 
 	ImGui::End();
@@ -229,6 +237,58 @@ void Track_View_Window::draw_ruler()
 	}
 }
 
+//! Draw the track header
+void Track_View_Window::draw_track_header()
+{
+	double x1  = canvas_pos.x + ruler_width;
+	double x2  = canvas_pos.x + canvas_size.x;
+	double y1  = canvas_pos.y;
+	double y2  = canvas_pos.y + track_header_height;
+	ImU32 fill_color = IM_COL32(65, 65, 65, 180);
+
+	draw_list->AddRectFilled(
+		ImVec2(x1,y1),
+		ImVec2(x2,y2),
+		fill_color);
+
+	std::map<int, Track_Info>& map = *song_manager->get_tracks();
+
+	double x = std::floor(ruler_width * 2.0);
+
+	for(auto track_it = map.begin(); track_it != map.end(); track_it++)
+	{
+		x1 = canvas_pos.x + std::floor(x);
+		x2 = canvas_pos.x + std::floor(x + track_width);
+
+		int id = track_it->first;
+
+		static const double margin = 2.0;
+		double max_width = track_width - margin * 2;
+
+		std::string str = "";
+		if(id < 'Z'-'A')
+			str.push_back(id + 'A');
+		else
+			str = std::to_string(id);
+
+		ImFont* font = ImGui::GetFont();
+		ImVec2 size = font->CalcTextSizeA(font->FontSize, max_width, max_width, str.c_str());
+
+		double y_offset = (track_header_height - font->FontSize) / 2.0;
+
+		draw_list->AddText(
+			font,
+			font->FontSize,
+			ImVec2(
+				x1 + track_width/2 - size.x/2,
+				y1 + y_offset),
+			IM_COL32(255, 255, 255, 255),
+			str.c_str());
+
+		x += std::floor(track_width + padding_width);
+	}
+}
+
 //! Draw the tracks
 void Track_View_Window::draw_tracks()
 {
@@ -306,7 +366,9 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 	ImU32 fill_color = IM_COL32(195, 0, 0, 255);
 
 	//testing
-	if(ImGui::IsMouseHoveringRect(ImVec2(x1,y1),ImVec2(x2,y2a)) && ImGui::IsItemHovered())
+	if(ImGui::GetIO().MousePos.y >= canvas_pos.y + track_header_height
+		&& ImGui::IsMouseHoveringRect(ImVec2(x1,y1),ImVec2(x2,y2a))
+		&& ImGui::IsItemHovered())
 	{
 		fill_color = IM_COL32(235, 40, 40, 255);
 		hover_event(position, event);
