@@ -91,6 +91,21 @@ void Editor_Window::display()
 				keep_open = false;
 			ImGui::EndMenu();
 		}
+
+		if (ImGui::BeginMenu("Player"))
+		{
+			if (ImGui::MenuItem("Play"))
+			{
+				stop_song();
+				play_song();
+			}
+			if (ImGui::MenuItem("Stop"))
+			{
+				stop_song();
+			}
+			ImGui::EndMenu();
+		}
+
 		if (ImGui::BeginMenu("Edit"))
 		{
 			bool ro = editor.IsReadOnly();
@@ -230,13 +245,13 @@ void Editor_Window::play_song()
 	}
 	catch(InputError& except)
 	{
-		player_error += except.what();
+		player_error = except.what();
 	}
 	catch(std::exception& except)
 	{
 		player_error = "exception type: ";
 		player_error += typeid(except).name();
-		player_error = "\nexception message: ";
+		player_error += "\nexception message: ";
 		player_error += except.what();
 	}
 }
@@ -258,7 +273,6 @@ void Editor_Window::show_player_error()
 		ImGui::OpenPopup(modal_id.c_str());
 	if(ImGui::BeginPopupModal(modal_id.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::Text("Could not play back");
 		ImGui::Text("%s\n", player_error.c_str());
 		ImGui::Separator();
 
