@@ -38,14 +38,16 @@ Audio_Manager::Audio_Manager()
 	}
 
 	enumerate_drivers();
-	if(open_driver())
+	while(driver_id < (int)driver_names.size())
 	{
-		set_audio_enabled(false);
+		if(!open_driver())
+			break;
+		driver_id++;
 	}
 	if(driver_opened)
-	{
 		open_device();
-	}
+	else
+		set_audio_enabled(false);
 }
 
 //! get the singleton instance of Audio_Manager
@@ -83,7 +85,7 @@ void Audio_Manager::set_window_handle(void* new_handle)
 	}
 }
 
-	
+
 //! Set global sample rate.
 /*!
  *  This function should re-initialize the streams with the new sample rate, if needed.
@@ -226,7 +228,7 @@ int Audio_Manager::open_driver()
 	if(info->drvSig == ADRVSIG_PULSE)
 	{
 		void* pulseDrv;
-		pulseDrv = AudioDrv_GetDrvData(audDrv);
+		pulseDrv = AudioDrv_GetDrvData(driver_handle);
 		Pulse_SetStreamDesc(pulseDrv, "mmlgui");
 	}
 #endif
@@ -266,7 +268,7 @@ int Audio_Manager::open_device()
 
 void Audio_Manager::close_device()
 {
-	const std::lock_guard<std::mutex> lock(mutex);
+	// libvgm may halt if we lock our own mutex before calling this. (ALSA)
 	AudioDrv_Stop(driver_handle);
 	device_opened = false;
 }
