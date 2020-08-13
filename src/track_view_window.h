@@ -39,6 +39,7 @@ class Track_View_Window : public Window
 
 		void draw_track_header();
 		void draw_tracks();
+		void draw_cursors();
 
 		double draw_event(double x, double y, int position, const Track_Info::Ext_Event& event);
 		void draw_event_border(double x1, double x2, double y, const Track_Info::Ext_Event& event);
@@ -58,7 +59,8 @@ class Track_View_Window : public Window
 		double y_scroll;
 
 		bool y_follow; // If set, follow song position.
-		double y_user; // User scroll position
+		uint32_t y_player; // Player Y position
+		double y_user; // User Y position
 
 		std::shared_ptr<Song_Manager> song_manager;
 

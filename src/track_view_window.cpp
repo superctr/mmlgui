@@ -84,6 +84,11 @@ void Track_View_Window::display()
 	ImGui::InputDouble("Scale", &y_scale_log, 0.01f, 0.1f, "%.2f");
 	ImGui::SameLine();
 	ImGui::Checkbox("Follow", &y_follow);
+	if(y_player)
+	{
+		ImGui::SameLine();
+		ImGui::Text("%d", y_player);
+	}
 	y_scale = std::pow(y_scale_log, 2);
 
 	ImGui::PopItemWidth();
@@ -120,7 +125,19 @@ void Track_View_Window::display()
 		if(y_user < y_min)
 			y_user = y_min;
 	}
-	y_pos = y_user - track_header_height;
+
+	// Get player position
+	auto player =  song_manager->get_player();
+	if(player != nullptr && !player->get_finished())
+		y_player = player->get_driver()->get_player_ticks();
+	else
+		y_player = 0;
+
+	// Set scroll position
+	if(y_follow && y_player)
+		y_pos = y_player - (canvas_size.y / 2.0) / y_scale;
+	else
+		y_pos = y_user - track_header_height;
 
 	// draw background
 	draw_list->AddRectFilled(
@@ -143,6 +160,14 @@ void Track_View_Window::display()
 		true);
 	draw_tracks();
 	draw_track_header();
+	draw_list->PopClipRect();
+
+	// draw cursor
+	draw_list->PushClipRect(
+		canvas_pos,
+		ImVec2(canvas_pos.x + canvas_size.x, canvas_pos.y + canvas_size.y),
+		true);
+	draw_cursors();
 	draw_list->PopClipRect();
 
 	ImGui::End();
@@ -495,4 +520,24 @@ std::string Track_View_Window::get_note_name(uint16_t note) const
 	// TODO: add octave if we have enough space
 
 	return str;
+}
+
+void Track_View_Window::draw_cursors()
+{
+	if(y_player)
+	{
+		// draw player position
+		double y = (y_player - y_pos) * y_scale;
+		if(y > 0 && y < canvas_size.y)
+		{
+			draw_list->AddRectFilled(
+				ImVec2(
+					canvas_pos.x + std::floor(ruler_width),
+					canvas_pos.y + std::floor(y)),
+				ImVec2(
+					canvas_pos.x + canvas_size.x,
+					canvas_pos.y + std::floor(y)+1),
+				IM_COL32(0, 200, 0, 255));
+		}
+	}
 }

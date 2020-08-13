@@ -176,6 +176,11 @@ Emu_Player::~Emu_Player()
 	printf("Emu_Player destroyed\n");
 }
 
+std::shared_ptr<Driver>& Emu_Player::get_driver()
+{
+	return driver;
+}
+
 //=====================================================================
 // Audio_Stream (front end)
 // Audio_Manager -> Emu_Player

@@ -60,6 +60,8 @@ class Emu_Player
 		Emu_Player(std::shared_ptr<Song> song);
 		virtual ~Emu_Player();
 
+		std::shared_ptr<Driver>& get_driver();
+
 		void setup_stream(uint32_t sample_rate);
 		int get_sample(WAVE_32BS* output, int count, int channels);
 		void stop_stream();
