@@ -17,6 +17,7 @@
 		2. file dialog has no keyboard controls at all :/
 */
 
+#include "main_window.h"
 #include "editor_window.h"
 #include "track_view_window.h"
 
@@ -139,6 +140,11 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
 				editor.SetReadOnly(ro);
 
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Configuration..."))
+				main_window.show_config_window();
+
 			ImGui::EndMenu();
 		}
 
@@ -158,6 +164,15 @@ void Editor_Window::display()
 				if (ImGui::MenuItem("Retro blue palette"))
 					editor.SetPalette(TextEditor::GetRetroBluePalette());
 				ImGui::EndMenu();
+			}
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Help"))
+		{
+			if (ImGui::MenuItem("About..."))
+			{
+				main_window.show_about_window();
 			}
 			ImGui::EndMenu();
 		}

@@ -1,13 +1,32 @@
 #include "imgui.h"
 #include "main_window.h"
 #include "editor_window.h"
+#include "config_window.h"
 
 #include <iostream>
 #include <csignal>
-#include "editor_window.h"
 
 //=====================================================================
-extern Main_Window main_window;
+static const char* version_string = "alpha version 0.0";
+
+static const char* gpl_string =
+	"This program is free software; you can redistribute it and/or\n"
+	"modify it under the terms of the GNU General Public License\n"
+	// TODO: Need to clarify the license of libvgm first.
+	//"as published by the Free Software Foundation; either version 2\n"
+	//"of the License, or (at your option) any later version.\n"
+	"version 2 as published by the Free Software Foundation.\n"
+	"\n"
+	"This program is distributed in the hope that it will be useful,\n"
+	"but WITHOUT ANY WARRANTY; without even the implied warranty of\n"
+	"MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the\n"
+	"GNU General Public License for more details.\n"
+	"\n"
+	"You should have received a copy of the GNU General Public License\n"
+	"along with this program; if not, write to the Free Software\n"
+	"Foundation Inc., 51 Franklin Street, Fifth Floor, Boston, MA\n"
+	"02110-1301, USA.";
+//=====================================================================
 
 #ifndef IMGUI_DISABLE_DEMO_WINDOWS
 static bool debug_imgui_demo_windows = false;
@@ -87,7 +106,7 @@ void FPS_Overlay::display()
 	ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
 	if (ImGui::Begin("overlay", &active, (corner != -1 ? ImGuiWindowFlags_NoMove : 0) | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav))
 	{
-		ImGui::Text("mmlgui (prototype)");
+		ImGui::Text("mmlgui (%s)", version_string);
 		ImGui::Separator();
 		ImGui::Text("FPS: %.2f", ImGui::GetIO().Framerate);
 		if (ImGui::BeginPopupContextWindow())
@@ -111,7 +130,40 @@ void FPS_Overlay::display()
 }
 
 //=====================================================================
+About_Window::About_Window()
+{
+	type = WT_ABOUT;
+}
+void About_Window::display()
+{
+	std::string window_id;
+	window_id = "About mmlgui##" + std::to_string(id);
+
+	ImGui::Begin(window_id.c_str(), &active, ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::Text("MML (Music Macro Language) editor and player.");
+	ImGui::Text("%s", version_string);
+	ImGui::Text("Copyright 2020 Ian Karlsson.");
+	ImGui::Separator();
+	ImGui::Text("Source code repository and issue reporting:");
+	ImGui::Text("https://github.com/superctr/mmlgui");
+	ImGui::Separator();
+	ImGui::BeginChild("credits", ImVec2(500, 300), false);
+	ImGui::Text(gpl_string);
+	ImGui::Separator();
+	ImGui::Text("This program uses the following libraries:");
+	ImGui::BulletText("ctrmml\nBy Ian Karlsson\nGPLv2 or later\nhttps://github.com/superctr/ctrmml");
+	ImGui::BulletText("Dear ImGui\nBy Omar Cornut, et al.\nMIT license\nhttps://github.com/ocornut/imgui");
+	ImGui::BulletText("glfw\nBy Marcus Geelnard & Camilla Löwy\nzlib / libpng license\nhttps://glfw.org");
+	ImGui::BulletText("ImGuiColorTextEdit\nBy BalazsJako\nMIT license\nhttps://github.com/superctr/ImGuiColorTextEdit");
+	ImGui::BulletText("libvgm\nBy Valley Bell, et al.\nGPLv2\nhttps://github.com/ValleyBell/libvgm");
+	ImGui::EndChild();
+	ImGui::End();
+}
+
+//=====================================================================
 Main_Window::Main_Window()
+	: show_about(false)
+	, show_config(false)
 {
 	children.push_back(std::make_shared<FPS_Overlay>());
 	children.push_back(std::make_shared<Editor_Window>());
@@ -137,7 +189,40 @@ void Main_Window::display()
 		{
 			children.push_back(std::make_shared<Editor_Window>());
 		}
+		if (ImGui::MenuItem("About...", nullptr, nullptr))
+		{
+			show_about_window();
+		}
 		ImGui::EndPopup();
+	}
+	if (show_about)
+	{
+		show_about = false;
+		bool overlay_active = find_child(WT_ABOUT) != children.end();
+		if(!overlay_active)
+		{
+			children.push_back(std::make_shared<About_Window>());
+		}
+	}
+	if (show_config)
+	{
+		show_config = false;
+		bool overlay_active = find_child(WT_CONFIG) != children.end();
+		if(!overlay_active)
+		{
+			children.push_back(std::make_shared<Config_Window>());
+		}
 	}
 	debug_window();
 }
+
+void Main_Window::show_about_window()
+{
+	show_about = true;
+}
+
+void Main_Window::show_config_window()
+{
+	show_config = true;
+}
+
