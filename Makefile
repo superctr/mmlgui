@@ -50,9 +50,9 @@ LDFLAGS_MMLGUI := $(LDFLAGS_IMGUI) $(LDFLAGS_CTRMML) $(LDFLAGS_LIBVGM)
 
 mmlgui: $(MMLGUI_OBJS) $(LIBCTRMML_CHECK)
 	$(CXX) $(MMLGUI_OBJS) $(LDFLAGS) $(LDFLAGS_MMLGUI) -o $@
-ifeq ($(OS),Windows_NT)
-	cp `which glfw3.dll` $(@D)
-endif
+#ifeq ($(OS),Windows_NT)
+#	cp `which glfw3.dll` $(@D)
+#endif
 
 run: mmlgui
 	./mmlgui

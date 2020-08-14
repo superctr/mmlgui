@@ -32,7 +32,7 @@ endif
 
 ifeq ($(OS),Windows_NT)
 	ECHO_MESSAGE = "MinGW"
-	LDFLAGS_IMGUI += -lglfw3 -lgdi32 -lopengl32 -limm32
+	LDFLAGS_IMGUI += -Wl,-Bstatic -lglfw3 -Wl,-Bdynamic -lgdi32 -lopengl32 -limm32
 
 	CFLAGS += `pkg-config --cflags glfw3`
 endif
