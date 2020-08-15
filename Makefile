@@ -5,6 +5,10 @@ CFLAGS = -Wall
 LDFLAGS =
 
 ifneq ($(RELEASE),1)
+ifeq ($(ASAN),1)
+CFLAGS += -fsanitize=address -O1 -fno-omit-frame-pointer
+LDFLAGS += -fsanitize=address
+endif
 CFLAGS += -g
 else
 CFLAGS += -O2

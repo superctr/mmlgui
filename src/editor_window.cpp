@@ -215,6 +215,12 @@ void Editor_Window::display()
 			set_flag(SAVE|SAVE_AS|DIALOG);
 		else if (isShortcut && ImGui::IsKeyPressed(GLFW_KEY_W))
 			keep_open = false;
+
+		song_manager->set_editor_position({cpos.mLine, cpos.mColumn});
+	}
+	else
+	{
+		song_manager->set_editor_position({-1, -1});
 	}
 
 	//ImGui::Spacing();
@@ -567,10 +573,10 @@ std::string Editor_Window::dump_state()
 	return str;
 }
 
-void  Editor_Window::show_track_positions()
+void Editor_Window::show_track_positions()
 {
-	std::map<int, std::unordered_set<int>> track_positions = {};
-	std::map<int, Track_Info> map = {};
+	std::map<int, std::unordered_set<int>> highlights = {};
+	Song_Manager::Track_Map map = {};
 	unsigned int ticks = 0;
 
 	auto tracks = song_manager->get_tracks();
@@ -600,10 +606,10 @@ void  Editor_Window::show_track_positions()
 			{
 				if(!i->get_filename().size())
 				{
-					track_positions[i->get_line()].insert(i->get_column());
+					highlights[i->get_line()].insert(i->get_column());
 				}
 			}
 		}
 	}
-	editor.SetMmlHighlights(track_positions);
+	editor.SetMmlHighlights(highlights);
 }

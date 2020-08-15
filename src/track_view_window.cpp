@@ -99,6 +99,7 @@ void Track_View_Window::display()
 	if (canvas_size.y < 50.0f) canvas_size.y = 50.0f;
 
 	draw_list = ImGui::GetWindowDrawList();
+	cursor_list.clear();
 
 	// handle controls
 	ImGuiIO& io = ImGui::GetIO();
@@ -276,7 +277,7 @@ void Track_View_Window::draw_track_header()
 		ImVec2(x2,y2),
 		fill_color);
 
-	std::map<int, Track_Info>& map = *song_manager->get_tracks();
+	Song_Manager::Track_Map& map = *song_manager->get_tracks();
 
 	double x = std::floor(ruler_width * 2.0);
 
@@ -317,14 +318,14 @@ void Track_View_Window::draw_track_header()
 //! Draw the tracks
 void Track_View_Window::draw_tracks()
 {
-	std::map<int, Track_Info>& map = *song_manager->get_tracks();
+	auto map = song_manager->get_tracks();
 
 	double x = std::floor(ruler_width * 2.0);
 
 	int y_off = 0;
 	double yr = y_pos * y_scale;
 
-	for(auto track_it = map.begin(); track_it != map.end(); track_it++)
+	for(auto track_it = map->begin(); track_it != map->end(); track_it++)
 	{
 		auto& info = track_it->second;
 
@@ -436,6 +437,23 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 		border_complete = true;
 	}
 
+	// add editor cursor
+	auto editor_refs = song_manager->get_editor_refs();
+	if(event.references.size())
+	{
+		auto ref = event.references.at(0);
+		if(editor_refs.count(ref.get()))
+		{
+			auto editor_pos = song_manager->get_editor_position();
+			double cursor_y = y1;
+
+			if((int)ref->get_line() < editor_pos.line || (int)ref->get_column() < editor_pos.column)
+				cursor_y = y2a;
+
+			cursor_list.push_back(ImVec2(std::floor(x1 - padding_width / 2), cursor_y));
+		}
+	}
+
 	return y + (event.on_time + event.off_time) * y_scale;
 }
 
@@ -539,5 +557,16 @@ void Track_View_Window::draw_cursors()
 					canvas_pos.y + std::floor(y)+1),
 				IM_COL32(0, 200, 0, 255));
 		}
+	}
+	// Draw editor cursors.
+	for(auto && i : cursor_list)
+	{
+		printf("add cursor at %.2f, %.2f\n", i.x, i.y);
+		draw_list->AddRectFilled(
+			i,
+			ImVec2(
+				i.x + track_width + padding_width,
+				i.y + 1),
+			IM_COL32(255, 255, 255, 255));
 	}
 }

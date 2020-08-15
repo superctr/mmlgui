@@ -19,6 +19,7 @@ Song_Manager::Song_Manager()
 	, job_successful(false)
 	, song(nullptr)
 	, player(nullptr)
+	, editor_position({-1, -1})
 {
 }
 
@@ -139,11 +140,60 @@ std::shared_ptr<std::map<int,Track_Info>> Song_Manager::get_tracks()
 	return tracks;
 }
 
+//! Get line info
+std::shared_ptr<Song_Manager::Line_Map> Song_Manager::get_lines()
+{
+	std::lock_guard<std::mutex> guard(mutex);
+	return lines;
+}
+
 //! Get error message
 std::string Song_Manager::get_error_message()
 {
 	std::lock_guard<std::mutex> guard(mutex);
 	return error_message;
+}
+
+//! Set the current editor position. Used to display cursors. Call this from the UI thread.
+void Song_Manager::set_editor_position(const Editor_Position& d)
+{
+	editor_position = d;
+
+	editor_refs.clear();
+	if(d.line != -1 && get_compile_result() == COMPILE_OK)
+	{
+		// Take ownership of the song and track info pointers.
+		auto song = get_song();
+		auto& line_map = (*get_lines().get())[d.line];
+		for(auto && i : line_map)
+		{
+			Track& track = song->get_track(i.first);
+			unsigned int position = i.second;
+			unsigned int event_count = track.get_event_count();
+			//printf("event count = %d, position = %d\n", track.get_event_count(), position);
+			if(event_count > 0)
+			{
+				InputRef* refptr = nullptr;
+				while(position-- > 0)
+				{
+					auto event = track.get_event(position);
+					if(event.reference == nullptr)
+						continue;
+					if(event.type != Event::NOTE && event.type != Event::TIE && event.type != Event::REST)
+						continue;
+					refptr = event.reference.get();
+					int line = event.reference->get_line(), column = event.reference->get_column();
+					if(line > d.line)
+						continue;
+					if(line == d.line && column > d.column)
+						continue;
+					break;
+				}
+				if(refptr != nullptr)
+					editor_refs.insert(refptr);
+			}
+		}
+	}
 }
 
 //! worker thread
@@ -166,7 +216,8 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 	bool successful = false;
 	std::shared_ptr<InputRef> ref = nullptr;
 	std::shared_ptr<Song> temp_song = nullptr;
-	std::shared_ptr<std::map<int,Track_Info>> temp_tracks = nullptr;
+	std::shared_ptr<Track_Map> temp_tracks = nullptr;
+	std::shared_ptr<Line_Map> temp_lines = nullptr;
 	std::string str;
 	std::string message;
 	int line = 0;
@@ -174,7 +225,8 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 	try
 	{
 		temp_song = std::make_shared<Song>();
-		temp_tracks = std::make_shared<std::map<int,Track_Info>>();
+		temp_tracks = std::make_shared<Track_Map>();
+		temp_lines = std::make_shared<Line_Map>();
 
 		int path_break = filename.find_last_of("/\\");
 		if(path_break != -1)
@@ -182,18 +234,19 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 
 		MML_Input input = MML_Input(temp_song.get());
 
-		// Read line by line
+		// Read MML input line by line
 		std::stringstream stream(buffer);
 		for(; std::getline(stream, str);)
 		{
 			input.read_line(str, line);
+			temp_lines.get()->insert({line, input.get_track_map()});
 			line++;
 		}
 
-		// try to run Song_Validator (to be replaced in future with a custom ...)
+		// Generate track note lists.
 		for(auto it = temp_song->get_track_map().begin(); it != temp_song->get_track_map().end(); it++)
 		{
-			// TODO: in the future, store track count in song data or tags
+			// TODO: Max track count should be decided based on the target platform.
 			if(it->first < 16)
 				temp_tracks->emplace_hint(temp_tracks->end(),
 					std::make_pair(it->first, Track_Info_Generator(*temp_song, it->second)));
@@ -218,6 +271,7 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 	job_successful = successful;
 	song = temp_song;
 	tracks = temp_tracks;
+	lines = temp_lines;
 	error_message = message;
 	error_reference = ref;
 }

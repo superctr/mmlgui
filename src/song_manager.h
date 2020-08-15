@@ -5,9 +5,12 @@
 #include <mutex>
 #include <condition_variable>
 #include <memory>
+#include <unordered_set>
+#include <set>
 
 #include "core.h"
 #include "input.h"
+#include "mml_input.h"
 
 #include "audio_manager.h"
 #include "emu_player.h"
@@ -24,6 +27,16 @@ class Song_Manager
 			COMPILE_ERROR = 1
 		};
 
+		typedef std::map<int, Track_Info> Track_Map;
+		typedef std::map<int, MML_Input::Track_Position_Map> Line_Map;
+		typedef std::set<InputRef*> Ref_Ptr_Set;
+
+		typedef struct
+		{
+			int line;
+			int column;
+		} Editor_Position;
+
 		Song_Manager();
 		virtual ~Song_Manager();
 
@@ -36,8 +49,17 @@ class Song_Manager
 
 		std::shared_ptr<Song> get_song();
 		std::shared_ptr<Emu_Player> get_player();
-		std::shared_ptr<std::map<int,Track_Info>> get_tracks();
+		std::shared_ptr<Track_Map> get_tracks();
+		std::shared_ptr<Line_Map> get_lines();
 		std::string get_error_message();
+
+		void set_editor_position(const Editor_Position& d);
+
+		//! Get the current editor position. Used to display cursors.
+		inline const Editor_Position& get_editor_position() const { return editor_position; }
+
+		//! Get a set of references pointers at the editor position. Note that the pointers may be invalid.
+		inline const Ref_Ptr_Set& get_editor_refs() const { return editor_refs; }
 
 	private:
 		void worker();
@@ -58,12 +80,17 @@ class Song_Manager
 
 		// worker output
 		std::shared_ptr<Song> song;
-		std::shared_ptr<std::map<int,Track_Info>> tracks;
+		std::shared_ptr<Track_Map> tracks;
+		std::shared_ptr<Line_Map> lines;
 		std::string error_message;
 		std::shared_ptr<InputRef> error_reference;
 
 		// playback state
 		std::shared_ptr<Emu_Player> player;
+
+		// editor state
+		Editor_Position editor_position;
+		Ref_Ptr_Set editor_refs;
 };
 
 #endif
