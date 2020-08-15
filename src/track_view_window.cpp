@@ -561,7 +561,6 @@ void Track_View_Window::draw_cursors()
 	// Draw editor cursors.
 	for(auto && i : cursor_list)
 	{
-		printf("add cursor at %.2f, %.2f\n", i.x, i.y);
 		draw_list->AddRectFilled(
 			i,
 			ImVec2(
