@@ -1,5 +1,6 @@
 SRC = src
 OBJ = obj
+BIN = bin
 
 CFLAGS = -Wall
 LDFLAGS =
@@ -32,7 +33,10 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 
 #======================================================================
 
-all: mmlgui test
+MMLGUI_BIN = $(BIN)/mmlgui
+UNITTEST_BIN = $(BIN)/unittest
+
+all: $(MMLGUI_BIN) test
 
 #======================================================================
 # target mmlgui
@@ -53,14 +57,14 @@ MMLGUI_OBJS = \
 
 LDFLAGS_MMLGUI := $(LDFLAGS_IMGUI) $(LDFLAGS_CTRMML) $(LDFLAGS_LIBVGM)
 
-mmlgui: $(MMLGUI_OBJS) $(LIBCTRMML_CHECK)
+$(MMLGUI_BIN): $(MMLGUI_OBJS) $(LIBCTRMML_CHECK)
 	$(CXX) $(MMLGUI_OBJS) $(LDFLAGS) $(LDFLAGS_MMLGUI) -o $@
 #ifeq ($(OS),Windows_NT)
 #	cp `which glfw3.dll` $(@D)
 #endif
 
-run: mmlgui
-	./mmlgui
+run: $(MMLGUI_BIN)
+	$(MMLGUI_BIN)
 
 #======================================================================
 # target unittest
@@ -73,11 +77,11 @@ UNITTEST_OBJS = \
 $(CTRMML_LIB)/lib$(LIBCTRMML).a:
 	$(MAKE) -C $(CTRMML) lib
 
-unittest: $(UNITTEST_OBJS) $(LIBCTRMML_CHECK)
+$(UNITTEST_BIN): $(UNITTEST_OBJS) $(LIBCTRMML_CHECK)
 	$(CXX) $(UNITTEST_OBJS) $(LDFLAGS) $(LDFLAGS_TEST) -o $@
 
-test: unittest
-	./unittest
+test: $(UNITTEST_BIN)
+	$(UNITTEST_BIN)
 
 clean:
 	rm -rf $(OBJ)
