@@ -449,11 +449,6 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 			double cursor_y = y1;
 
 			// Set flag if we have already displayed a cursor for the current ref, and we are in a subroutine call.
-			if(!song_manager->get_editor_subroutine() && event.references.size() > 1)
-			{
-				printf("time = %5d, index = %d, ", position, index);
-				printf("last_ref = %p == %p\n", last_ref, ref.get());
-			}
 			bool jump_hack = !song_manager->get_editor_subroutine() && (event.references.size() > 1) && last_ref == ref.get();
 			last_ref = ref.get();
 
