@@ -61,10 +61,17 @@ class Song_Manager
 		//! Get a set of references pointers at the editor position. Note that the pointers may be invalid.
 		inline const Ref_Ptr_Set& get_editor_refs() const { return editor_refs; }
 
+		//! Return true if editor position points to a subroutine. Used to enable a hack.
+		inline bool get_editor_subroutine() const { return editor_jump_hack; }
+
 	private:
 		void worker();
 		void compile_job(std::unique_lock<std::mutex>& lock, std::string buffer, std::string filename);
 
+		// song status
+		const static int max_channels;
+
+		// worker state
 		std::mutex mutex;
 		std::condition_variable condition_variable;
 		std::unique_ptr<std::thread> worker_ptr;
@@ -91,6 +98,7 @@ class Song_Manager
 		// editor state
 		Editor_Position editor_position;
 		Ref_Ptr_Set editor_refs;
+		bool editor_jump_hack;
 };
 
 #endif

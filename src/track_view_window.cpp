@@ -340,6 +340,7 @@ void Track_View_Window::draw_tracks()
 		double y = (it->first + y_off) * y_scale - yr;
 
 		border_complete = true;
+		last_ref = nullptr;
 
 		// draw the previous event if we can
 		if(it != info.events.begin())
@@ -439,22 +440,38 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 
 	// add editor cursor
 	auto editor_refs = song_manager->get_editor_refs();
-	if(event.references.size())
+	int index = 0;
+	for(auto&& ref : event.references)
 	{
-		auto ref = event.references.at(0);
 		if(editor_refs.count(ref.get()))
 		{
 			auto editor_pos = song_manager->get_editor_position();
 			double cursor_y = y1;
 
-			if((int)ref->get_line() < editor_pos.line || (int)ref->get_column() < editor_pos.column)
-				cursor_y = y2a;
+			// Set flag if we have already displayed a cursor for the current ref, and we are in a subroutine call.
+			if(!song_manager->get_editor_subroutine() && event.references.size() > 1)
+			{
+				printf("time = %5d, index = %d, ", position, index);
+				printf("last_ref = %p == %p\n", last_ref, ref.get());
+			}
+			bool jump_hack = !song_manager->get_editor_subroutine() && (event.references.size() > 1) && last_ref == ref.get();
+			last_ref = ref.get();
 
-			cursor_list.push_back(ImVec2(std::floor(x1 - padding_width / 2), cursor_y));
+			if((int)ref->get_line() < editor_pos.line || (int)ref->get_column() < editor_pos.column)
+			{
+				cursor_y = y2a;
+				if(jump_hack && cursor_list.size())
+					cursor_list[cursor_list.size() - 1] = ImVec2(std::floor(x1 - padding_width / 2), cursor_y);
+			}
+
+			if(!jump_hack)
+				cursor_list.push_back(ImVec2(std::floor(x1 - padding_width / 2), cursor_y));
 		}
+		index++;
 	}
 
 	return y + (event.on_time + event.off_time) * y_scale;
+
 }
 
 void Track_View_Window::draw_event_border(double x1, double x2, double y, const Track_Info::Ext_Event& event)

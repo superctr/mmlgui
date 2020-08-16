@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <sstream>
 
+const int Song_Manager::max_channels = 16;
+
 //! constructs a Song_Manager
 Song_Manager::Song_Manager()
 	: worker_ptr(nullptr)
@@ -20,6 +22,7 @@ Song_Manager::Song_Manager()
 	, song(nullptr)
 	, player(nullptr)
 	, editor_position({-1, -1})
+	, editor_jump_hack(false)
 {
 }
 
@@ -155,22 +158,35 @@ std::string Song_Manager::get_error_message()
 }
 
 //! Set the current editor position. Used to display cursors. Call this from the UI thread.
+/*!
+ *  This approach is not perfect, there are a few things that need to be looked into.
+ *  - A subroutine which does not contain any notes will cause the cursor to not appear. See comment below.
+ *  - Cursor will still point to the notes inside the loop, even if the editor points to a command after the loop end (']')
+ */
 void Song_Manager::set_editor_position(const Editor_Position& d)
 {
 	editor_position = d;
 
 	editor_refs.clear();
+	editor_jump_hack = false;
+
 	if(d.line != -1 && get_compile_result() == COMPILE_OK)
 	{
 		// Take ownership of the song and track info pointers.
 		auto song = get_song();
-		auto& line_map = (*get_lines().get())[d.line];
+		auto lines = get_lines();
+		auto& line_map = (*lines.get())[d.line];
 		for(auto && i : line_map)
 		{
 			Track& track = song->get_track(i.first);
 			unsigned int position = i.second;
 			unsigned int event_count = track.get_event_count();
-			//printf("event count = %d, position = %d\n", track.get_event_count(), position);
+
+			// Disable subroutine cursor hack if we are editing a line containing a subroutine.
+			if(i.first > max_channels)
+				editor_jump_hack = true;
+
+			// Find reference to first event after the pointer.
 			if(event_count > 0)
 			{
 				InputRef* refptr = nullptr;
@@ -179,8 +195,10 @@ void Song_Manager::set_editor_position(const Editor_Position& d)
 					auto event = track.get_event(position);
 					if(event.reference == nullptr)
 						continue;
-					if(event.type != Event::NOTE && event.type != Event::TIE && event.type != Event::REST)
+					if(event.type != Event::NOTE && event.type != Event::TIE && event.type != Event::REST && event.type != Event::JUMP)
 						continue;
+					// TODO: Do not save a reference if a subroutine does not contain any notes.
+					// Otherwise, the cursor might not show up.
 					refptr = event.reference.get();
 					int line = event.reference->get_line(), column = event.reference->get_column();
 					if(line > d.line)
@@ -247,7 +265,7 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 		for(auto it = temp_song->get_track_map().begin(); it != temp_song->get_track_map().end(); it++)
 		{
 			// TODO: Max track count should be decided based on the target platform.
-			if(it->first < 16)
+			if(it->first < max_channels)
 				temp_tracks->emplace_hint(temp_tracks->end(),
 					std::make_pair(it->first, Track_Info_Generator(*temp_song, it->second)));
 		}

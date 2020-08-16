@@ -77,6 +77,7 @@ class Track_View_Window : public Window
 		ImVec2 canvas_size;
 		ImDrawList* draw_list;
 		std::vector<ImVec2> cursor_list;
+		const InputRef* last_ref;
 
 		// buffered drawing the bottom border of tied notes
 		bool border_complete;
