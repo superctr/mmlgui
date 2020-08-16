@@ -93,15 +93,18 @@ void Editor_Window::display()
 
 		if (ImGui::BeginMenu("Player"))
 		{
-			if (ImGui::MenuItem("Play"))
-			{
-				stop_song();
+			if (ImGui::MenuItem("Play", "F5"))
 				play_song();
-			}
-			if (ImGui::MenuItem("Stop"))
-			{
+#if 0
+			// These menu options don't work because the editor loses focus when entering the menu. Duh.
+			// Using key shortcuts while editor is focused still works though.
+			if (ImGui::MenuItem("Play from start of line", "F6"))
+				play_from_line();
+			if (ImGui::MenuItem("Play from cursor", "F7"))
+				play_from_cursor();
+#endif
+			if (ImGui::MenuItem("Stop", "Escape or F8"))
 				stop_song();
-			}
 			ImGui::EndMenu();
 		}
 
@@ -215,6 +218,14 @@ void Editor_Window::display()
 			set_flag(SAVE|SAVE_AS|DIALOG);
 		else if (isShortcut && ImGui::IsKeyPressed(GLFW_KEY_W))
 			keep_open = false;
+		else if(ImGui::IsKeyPressed(GLFW_KEY_ESCAPE) || ImGui::IsKeyPressed(GLFW_KEY_F8))
+			stop_song();
+		else if(ImGui::IsKeyPressed(GLFW_KEY_F5))
+			play_song();
+		else if(ImGui::IsKeyPressed(GLFW_KEY_F6))
+			play_from_line();
+		else if(ImGui::IsKeyPressed(GLFW_KEY_F7))
+			play_from_cursor();
 
 		song_manager->set_editor_position({cpos.mLine, cpos.mColumn});
 	}
@@ -227,6 +238,9 @@ void Editor_Window::display()
 	ImGui::AlignTextToFramePadding();
 	ImGui::Text("%6d/%-6d %6d line%c  | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), (editor.GetTotalLines() == 1) ? ' ' : 's',
 		editor.IsOverwrite() ? "Ovr" : "Ins");
+
+	ImGui::SameLine();
+	ImGui::Text("L%d, C%d", song_manager->get_song_pos_at_line(), song_manager->get_song_pos_at_cursor());
 
 	//get_compile_result();
 	show_player_controls();
@@ -256,11 +270,11 @@ void Editor_Window::close_request()
 		close_req_state = Window::CLOSE_OK;
 }
 
-void Editor_Window::play_song()
+void Editor_Window::play_song(uint32_t position)
 {
 	try
 	{
-		song_manager->play();
+		song_manager->play(position);
 	}
 	catch(InputError& except)
 	{
@@ -278,6 +292,16 @@ void Editor_Window::play_song()
 void Editor_Window::stop_song()
 {
 	song_manager->stop();
+}
+
+void Editor_Window::play_from_cursor()
+{
+	play_song(song_manager->get_song_pos_at_cursor());
+}
+
+void Editor_Window::play_from_line()
+{
+	play_song(song_manager->get_song_pos_at_line());
 }
 
 void Editor_Window::show_player_error()
@@ -518,17 +542,12 @@ void Editor_Window::show_player_controls()
 	else
 	{
 		if(ImGui::Button("Play", size))
-		{
-			stop_song();
 			play_song();
-		}
 	}
 	// Handle stop button
 	ImGui::SameLine();
 	if (ImGui::Button("Stop", size))
-	{
 		stop_song();
-	}
 
 /*
 	// Handle a progress bar. Just dummy for now

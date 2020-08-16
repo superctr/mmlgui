@@ -10,6 +10,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
+#include <climits>
 
 const int Song_Manager::max_channels = 16;
 
@@ -23,6 +24,8 @@ Song_Manager::Song_Manager()
 	, player(nullptr)
 	, editor_position({-1, -1})
 	, editor_jump_hack(false)
+	, song_pos_at_line(0)
+	, song_pos_at_cursor(0)
 {
 }
 
@@ -107,10 +110,12 @@ int Song_Manager::compile(const std::string& buffer, const std::string& filename
  *  \exception InputError Song playback errors, for example missing samples or bad data.
  *  \exception std::exception Should always be catched to avoid data loss.
  */
-void Song_Manager::play()
+void Song_Manager::play(uint32_t start_position)
 {
+	stop();
+
 	Audio_Manager& am = Audio_Manager::get();
-	player = std::make_shared<Emu_Player>(get_song());
+	player = std::make_shared<Emu_Player>(get_song(), start_position);
 	am.add_stream(std::static_pointer_cast<Audio_Stream>(player));
 }
 
@@ -159,6 +164,8 @@ std::string Song_Manager::get_error_message()
 
 //! Set the current editor position. Used to display cursors. Call this from the UI thread.
 /*!
+ *  Cursor should be displayed if an InputRef* from editor_refs can be also found in the Track_Info array (tracks).
+ *
  *  This approach is not perfect, there are a few things that need to be looked into.
  *  - A subroutine which does not contain any notes will cause the cursor to not appear. See comment below.
  *  - Cursor will still point to the notes inside the loop, even if the editor points to a command after the loop end (']')
@@ -166,6 +173,9 @@ std::string Song_Manager::get_error_message()
 void Song_Manager::set_editor_position(const Editor_Position& d)
 {
 	editor_position = d;
+
+	song_pos_at_cursor = UINT_MAX;
+	song_pos_at_line = UINT_MAX;
 
 	editor_refs.clear();
 	editor_jump_hack = false;
@@ -176,11 +186,14 @@ void Song_Manager::set_editor_position(const Editor_Position& d)
 		auto song = get_song();
 		auto lines = get_lines();
 		auto& line_map = (*lines.get())[d.line];
+
 		for(auto && i : line_map)
 		{
 			Track& track = song->get_track(i.first);
 			unsigned int position = i.second;
 			unsigned int event_count = track.get_event_count();
+
+			bool found_note_at_cursor = false;
 
 			// Disable subroutine cursor hack if we are editing a line containing a subroutine.
 			if(i.first > max_channels)
@@ -192,26 +205,66 @@ void Song_Manager::set_editor_position(const Editor_Position& d)
 				InputRef* refptr = nullptr;
 				while(position-- > 0)
 				{
+					// This code doesn't look very nice and has some bugs. It would be good to rewrite it at some point in the future.
 					auto event = track.get_event(position);
-					if(event.reference == nullptr)
+					auto ref = event.reference;
+					unsigned int play_time = event.play_time;
+
+					// Skip following if there is no reference. Reference pointer is needed to identify where a cursor should be drawn.
+					if(ref == nullptr)
 						continue;
+
+					// Calculate the corrected play time. If the cursor is _after_ the note, add the note duration as well.
+					// TODO: if the last event was a subroutine call, this value is not properly calculated. Need to find the position
+					// of the last note in the subroutine call.
+					if((signed)ref->get_line() < d.line)
+						play_time += event.on_time + event.off_time;
+
+					// If the play time is currently lowest recorded, set the "song position at beginning of line".
+					// This variable will be correct since the loop continues until the first event of the line.
+					if(play_time < song_pos_at_line)
+						song_pos_at_line = play_time;
+
+					// Do not save an InputRef* if we do not have a note, rest, tie or subroutine (jump) event.
+					// TODO: A subroutine InputRef* will only work if said subroutine contains any notes. If not, then the following
+					// InputRef* will not be found in any Track_Info event. We will need to add code to identify and skip such subroutines.
 					if(event.type != Event::NOTE && event.type != Event::TIE && event.type != Event::REST && event.type != Event::JUMP)
 						continue;
-					// TODO: Do not save a reference if a subroutine does not contain any notes.
-					// Otherwise, the cursor might not show up.
-					refptr = event.reference.get();
-					int line = event.reference->get_line(), column = event.reference->get_column();
+
+					// Only save the InputRef* for the event most adjacent to the cursor. Still need to continue the loop though, in order
+					// to identify the play time of the first event of the line.
+					if(!found_note_at_cursor)
+						refptr = ref.get();
+
+					int line = ref->get_line(), column = ref->get_column();
 					if(line > d.line)
 						continue;
 					if(line == d.line && column > d.column)
 						continue;
-					break;
+
+					// Calculate the corrected play time. If the cursor is _after_ the note, add the note duration as well.
+					play_time = event.play_time;
+					if((signed)ref->get_line() < d.line || (signed)ref->get_column() < d.column)
+						play_time += event.on_time + event.off_time;
+
+					if(!found_note_at_cursor && play_time < song_pos_at_cursor)
+						song_pos_at_cursor = play_time;
+
+					found_note_at_cursor = true;
+
+					// Finally break the loop once we found an event at a previous line.
+					if((signed)ref->get_line() < d.line)
+						break;
 				}
 				if(refptr != nullptr)
 					editor_refs.insert(refptr);
 			}
 		}
 	}
+	if(song_pos_at_cursor == UINT_MAX)
+		song_pos_at_cursor = 0;
+	if(song_pos_at_line == UINT_MAX)
+		song_pos_at_line = 0;
 }
 
 //! worker thread

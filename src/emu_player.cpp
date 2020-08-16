@@ -12,6 +12,8 @@
 #include <stdexcept>
 #include <algorithm>
 
+#define DEBUG_PRINT(fmt,...)
+
 using std::malloc;
 using std::free;
 
@@ -28,13 +30,13 @@ Device_Wrapper::~Device_Wrapper()
 {
 	if(resmpl_init)
 	{
-		printf("deinit resampler\n");
+		DEBUG_PRINT("deinit resampler\n");
 		// deinit
 		Resmpl_Deinit(&resmpl);
 	}
 	if(dev_init)
 	{
-		printf("deinit emu\n");
+		DEBUG_PRINT("deinit emu\n");
 		// deinit
 		SndEmu_Stop(&dev);
 	}
@@ -52,14 +54,14 @@ void Device_Wrapper::set_rate(uint32_t rate)
 
 	if(resmpl_init)
 	{
-		printf("deinit resampler\n");
+		DEBUG_PRINT("deinit resampler\n");
 		Resmpl_Deinit(&resmpl);
 		resmpl_init = false;
 	}
 
 	if(dev_init)
 	{
-		printf("init resampler\n");
+		DEBUG_PRINT("init resampler\n");
 		Resmpl_SetVals(&resmpl, 0xff, volume, sample_rate);
 		Resmpl_DevConnect(&resmpl, &dev);
 		Resmpl_Init(&resmpl);
@@ -69,7 +71,7 @@ void Device_Wrapper::set_rate(uint32_t rate)
 
 void Device_Wrapper::init_sn76489(uint32_t freq, uint8_t lfsr_w, uint16_t lfsr_t)
 {
-	printf("init emu (sn76489 @ %d Hz)\n", freq);
+	DEBUG_PRINT("init emu (sn76489 @ %d Hz)\n", freq);
 	DEV_GEN_CFG dev_cfg;
 	SN76496_CFG sn_cfg;
 
@@ -101,7 +103,7 @@ void Device_Wrapper::init_sn76489(uint32_t freq, uint8_t lfsr_w, uint16_t lfsr_t
 
 void Device_Wrapper::init_ym2612(uint32_t freq)
 {
-	printf("init emu (ym2612 @ %d Hz)\n", freq);
+	DEBUG_PRINT("init emu (ym2612 @ %d Hz)\n", freq);
 	DEV_GEN_CFG dev_cfg;
 
 	dev_cfg.emuCore = 0;
@@ -156,7 +158,7 @@ inline void Device_Wrapper::get_sample(WAVE_32BS* output, int count)
 
 //=====================================================================
 
-Emu_Player::Emu_Player(std::shared_ptr<Song> song)
+Emu_Player::Emu_Player(std::shared_ptr<Song> song, uint32_t start_position)
 	: sample_rate(1)
 	, delta_time(0)
 	, sample_delta(1)
@@ -164,16 +166,16 @@ Emu_Player::Emu_Player(std::shared_ptr<Song> song)
 	, play_time2(0)
 	, song(song)
 {
-	printf("Emu_Player created\n");
 
-	// TODO: Hardcoded driver type
+	// TODO: Fix hardcoded driver type
 	driver = std::make_shared<MD_Driver>(1, (VGM_Interface*)this);
 	driver.get()->play_song(*song.get());
+	if(start_position)
+		driver.get()->skip_ticks(start_position);
 }
 
 Emu_Player::~Emu_Player()
 {
-	printf("Emu_Player destroyed\n");
 }
 
 std::shared_ptr<Driver>& Emu_Player::get_driver()

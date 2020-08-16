@@ -44,7 +44,7 @@ class Song_Manager
 		bool get_compile_in_progress();
 
 		int compile(const std::string& buffer, const std::string& filename);
-		void play();
+		void play(uint32_t start_position = 0);
 		void stop();
 
 		std::shared_ptr<Song> get_song();
@@ -63,6 +63,12 @@ class Song_Manager
 
 		//! Return true if editor position points to a subroutine. Used to enable a hack.
 		inline bool get_editor_subroutine() const { return editor_jump_hack; }
+
+		//! Get the song playtime at the beginning of line pointed at by the editor.
+		inline uint32_t get_song_pos_at_line() const { return song_pos_at_line; }
+
+		//! Get the song playtime at the cursor pointed at by the editor.
+		inline uint32_t get_song_pos_at_cursor() const { return song_pos_at_cursor; }
 
 	private:
 		void worker();
@@ -99,6 +105,9 @@ class Song_Manager
 		Editor_Position editor_position;
 		Ref_Ptr_Set editor_refs;
 		bool editor_jump_hack;
+
+		unsigned int song_pos_at_line;
+		unsigned int song_pos_at_cursor;
 };
 
 #endif

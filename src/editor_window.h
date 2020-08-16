@@ -19,8 +19,11 @@ class Editor_Window : public Window
 		void close_request() override;
 		std::string dump_state() override;
 
-		void play_song();
+		void play_song(uint32_t position = 0);
 		void stop_song();
+
+		void play_from_cursor();
+		void play_from_line();
 
 	private:
 		const char* default_filename = "Untitled.mml";

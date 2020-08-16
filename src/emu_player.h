@@ -57,7 +57,7 @@ class Emu_Player
 	, public Audio_Stream
 {
 	public:
-		Emu_Player(std::shared_ptr<Song> song);
+		Emu_Player(std::shared_ptr<Song> song, uint32_t start_position = 0);
 		virtual ~Emu_Player();
 
 		std::shared_ptr<Driver>& get_driver();
