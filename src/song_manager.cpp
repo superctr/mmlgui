@@ -211,7 +211,7 @@ static unsigned int get_loop_length(Song& song, Track& track, unsigned int posit
 			break_time = end_time - event.play_time;
 			refptr = nullptr;
 		}
-		else if(event.type == Event::LOOP_START && depth)
+		else if(event.type == Event::LOOP_START)
 		{
 			if(depth)
 				depth--;
