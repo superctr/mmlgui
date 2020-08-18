@@ -46,13 +46,23 @@ class Editor_Window : public Window
 		inline void clear_flag(uint32_t data) { flag &= ~data; };
 		inline bool test_flag(uint32_t data) { return flag & data; };
 
+		// Text editor state
 		TextEditor editor;
+
+		// File selection state
 		ImGuiFs::Dialog fs;
 		std::string filename;
 		uint32_t flag;
+
+		// Song manager state
 		std::shared_ptr<Song_Manager> song_manager;
 
+		// Playback error string
 		std::string player_error;
+
+		// Song position
+		uint32_t line_pos;
+		uint32_t cursor_pos;
 };
 
 #endif

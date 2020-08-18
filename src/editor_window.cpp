@@ -45,6 +45,8 @@ Editor_Window::Editor_Window()
 	: editor()
 	, filename(default_filename)
 	, flag(RECOMPILE)
+	, line_pos(0)
+	, cursor_pos(0)
 {
 	type = WT_EDITOR;
 	editor.SetColorizerEnable(false); // disable syntax highlighting for now
@@ -95,14 +97,10 @@ void Editor_Window::display()
 		{
 			if (ImGui::MenuItem("Play", "F5"))
 				play_song();
-#if 0
-			// These menu options don't work because the editor loses focus when entering the menu. Duh.
-			// Using key shortcuts while editor is focused still works though.
 			if (ImGui::MenuItem("Play from start of line", "F6"))
 				play_from_line();
 			if (ImGui::MenuItem("Play from cursor", "F7"))
 				play_from_cursor();
-#endif
 			if (ImGui::MenuItem("Stop", "Escape or F8"))
 				stop_song();
 			ImGui::EndMenu();
@@ -179,6 +177,7 @@ void Editor_Window::display()
 			}
 			ImGui::EndMenu();
 		}
+
 		ImGui::EndMenuBar();
 	}
 
@@ -228,6 +227,8 @@ void Editor_Window::display()
 			play_from_cursor();
 
 		song_manager->set_editor_position({cpos.mLine, cpos.mColumn});
+		line_pos = song_manager->get_song_pos_at_line();
+		cursor_pos = song_manager->get_song_pos_at_cursor();
 	}
 	else
 	{
@@ -236,11 +237,11 @@ void Editor_Window::display()
 
 	//ImGui::Spacing();
 	ImGui::AlignTextToFramePadding();
-	ImGui::Text("%6d/%-6d %6d line%c  | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), (editor.GetTotalLines() == 1) ? ' ' : 's',
+	ImGui::Text("%6d:%-6d %6d line%c | %s ", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(), (editor.GetTotalLines() == 1) ? ' ' : 's',
 		editor.IsOverwrite() ? "Ovr" : "Ins");
 
 	ImGui::SameLine();
-	ImGui::Text("L%d, C%d", song_manager->get_song_pos_at_line(), song_manager->get_song_pos_at_cursor());
+	ImGui::Text("| L:%5d C:%5d", line_pos, cursor_pos);
 
 	//get_compile_result();
 	show_player_controls();
@@ -296,12 +297,12 @@ void Editor_Window::stop_song()
 
 void Editor_Window::play_from_cursor()
 {
-	play_song(song_manager->get_song_pos_at_cursor());
+	play_song(cursor_pos);
 }
 
 void Editor_Window::play_from_line()
 {
-	play_song(song_manager->get_song_pos_at_line());
+	play_song(line_pos);
 }
 
 void Editor_Window::show_player_error()
