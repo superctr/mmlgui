@@ -310,7 +310,8 @@ void Song_Manager::set_editor_position(const Editor_Position& d)
 					if(is_note_or_jump(event.type))
 					{
 						refptr = event.reference.get();
-						song_pos_at_cursor = event.play_time;
+						if(event.play_time < song_pos_at_cursor)
+							song_pos_at_cursor = event.play_time;
 						break;
 					}
 					else if(is_loop_event(event.type))
@@ -338,18 +339,20 @@ void Song_Manager::set_editor_position(const Editor_Position& d)
 					{
 						passed_line = ((signed)ref->get_line() < d.line);
 						if(!passed_line && event.play_time < song_pos_at_line)
-								song_pos_at_line = event.play_time;
+							song_pos_at_line = event.play_time;
 					}
 
 					if(refptr == nullptr && length != 0 && is_note_or_jump(event.type))
 					{
 						refptr = event.reference.get();
-						song_pos_at_cursor = event.play_time + length;
+						if((event.play_time + length) < song_pos_at_cursor)
+							song_pos_at_cursor = event.play_time + length;
 					}
 					else if(refptr == nullptr && length != 0 && event.type == Event::LOOP_END)
 					{
 						refptr = loop_refptr;
-						song_pos_at_cursor = event.play_time + length;
+						if((event.play_time + length) < song_pos_at_cursor)
+							song_pos_at_cursor = event.play_time + length;
 					}
 				}
 
