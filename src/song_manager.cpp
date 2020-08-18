@@ -181,17 +181,18 @@ static inline bool is_loop_event(Event::Type type)
 }
 
 //! Get the length of a loop section.
-static unsigned int get_loop_length(Song& song, Track& track)
+static unsigned int get_loop_length(Song& song, Track& track, unsigned int position, InputRef*& refptr)
 {
 	// This function is a hack only needed in the case where a subroutine ends with a loop section.
 	// Until I properly count the length of subroutines again, this will be necessary.
 	// Example: passport.mml:177
 	int depth = 0;
-	int count = track.get_event(track.get_event_count() - 1).param - 1;
+	int count = track.get_event(position).param - 1;
 	int start_time = 0;
-	int end_time = track.get_event(track.get_event_count() - 1).play_time;
+	int end_time = track.get_event(position).play_time;
 	int break_time = 0;
-	int position = track.get_event_count() - 2;
+	refptr = nullptr;
+	position -= 1;
 	while(position-- > 0)
 	{
 		auto event = track.get_event(position);
@@ -199,11 +200,13 @@ static unsigned int get_loop_length(Song& song, Track& track)
 		if(event.type == Event::LOOP_END)
 			depth++;
 		else if(event.type == Event::LOOP_BREAK && !depth)
-			break_time = end_time - event.play_time;
+			break_time = end_time - event.play_time, refptr = nullptr;
 		else if(event.type == Event::LOOP_START && depth)
 			depth--;
 		else if(event.type == Event::LOOP_START && !depth)
 			break;
+		else if(is_note_or_jump(event.type) && refptr == nullptr)
+			refptr = event.reference.get();
 	}
 	unsigned int result = (end_time - start_time) * count - break_time;
 	return result;
@@ -215,6 +218,7 @@ static unsigned int get_subroutine_length(Song& song, unsigned int param, unsign
 	try
 	{
 		Track& track = song.get_track(param);
+		InputRef* dummy;
 		if(track.get_event_count())
 		{
 			auto event = track.get_event(track.get_event_count() - 1);
@@ -222,7 +226,7 @@ static unsigned int get_subroutine_length(Song& song, unsigned int param, unsign
 			if(event.type == Event::JUMP && max_recursion != 0)
 				end_time = event.play_time + get_subroutine_length(song, event.param, max_recursion - 1);
 			else if(event.type == Event::LOOP_END)
-				end_time = event.play_time + get_loop_length(song, track);
+				end_time = event.play_time + get_loop_length(song, track, track.get_event_count() - 1, dummy);
 			else
 				end_time = event.play_time + event.on_time + event.off_time;
 			return end_time - track.get_event(0).play_time;
@@ -311,9 +315,12 @@ void Song_Manager::set_editor_position(const Editor_Position& d)
 				{
 					auto event = track.get_event(position);
 					uint32_t length = event.on_time + event.off_time;
+					InputRef* loop_refptr;
 
 					if(event.type == Event::JUMP)
-						 length = get_subroutine_length(*song, event.param, 10);
+						length = get_subroutine_length(*song, event.param, 10);
+					else if(event.type == Event::LOOP_END)
+						length = get_loop_length(*song, track, position, loop_refptr);
 
 					auto ref = track.get_event(position).reference;
 					if(ref != nullptr)
@@ -326,6 +333,11 @@ void Song_Manager::set_editor_position(const Editor_Position& d)
 					if(refptr == nullptr && length != 0 && is_note_or_jump(event.type))
 					{
 						refptr = event.reference.get();
+						song_pos_at_cursor = event.play_time + length;
+					}
+					else if(refptr == nullptr && length != 0 && event.type == Event::LOOP_END)
+					{
+						refptr = loop_refptr;
 						song_pos_at_cursor = event.play_time + length;
 					}
 				}
