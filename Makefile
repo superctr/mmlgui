@@ -58,6 +58,7 @@ MMLGUI_OBJS = \
 LDFLAGS_MMLGUI := $(LDFLAGS_IMGUI) $(LDFLAGS_CTRMML) $(LDFLAGS_LIBVGM)
 
 $(MMLGUI_BIN): $(MMLGUI_OBJS) $(LIBCTRMML_CHECK)
+	@mkdir -p $(@D)
 	$(CXX) $(MMLGUI_OBJS) $(LDFLAGS) $(LDFLAGS_MMLGUI) -o $@
 #ifeq ($(OS),Windows_NT)
 #	cp `which glfw3.dll` $(@D)
@@ -78,6 +79,7 @@ $(CTRMML_LIB)/lib$(LIBCTRMML).a:
 	$(MAKE) -C $(CTRMML) lib
 
 $(UNITTEST_BIN): $(UNITTEST_OBJS) $(LIBCTRMML_CHECK)
+	@mkdir -p $(@D)
 	$(CXX) $(UNITTEST_OBJS) $(LDFLAGS) $(LDFLAGS_TEST) -o $@
 
 test: $(UNITTEST_BIN)
