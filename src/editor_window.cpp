@@ -141,10 +141,12 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
 				editor.SetReadOnly(ro);
 
+#ifdef DEBUG
 			ImGui::Separator();
 
 			if (ImGui::MenuItem("Configuration..."))
 				main_window.show_config_window();
+#endif
 
 			ImGui::EndMenu();
 		}

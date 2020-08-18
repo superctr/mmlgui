@@ -10,7 +10,7 @@ ifeq ($(ASAN),1)
 CFLAGS += -fsanitize=address -O1 -fno-omit-frame-pointer
 LDFLAGS += -fsanitize=address
 endif
-CFLAGS += -g
+CFLAGS += -g -DDEBUG
 else
 CFLAGS += -O2
 LDFLAGS += -s
