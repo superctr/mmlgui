@@ -452,7 +452,8 @@ double Track_View_Window::draw_event(double x, double y, int position, const Tra
 			bool jump_hack = !song_manager->get_editor_subroutine() && (event.references.size() > 1) && last_ref == ref.get();
 			last_ref = ref.get();
 
-			if((int)ref->get_line() < editor_pos.line || (int)ref->get_column() < editor_pos.column)
+			if(     (int)ref->get_line() < editor_pos.line
+				|| ((int)ref->get_line() == editor_pos.line && (int)ref->get_column() < editor_pos.column))
 			{
 				cursor_y = y2a;
 				if(jump_hack && cursor_list.size())
