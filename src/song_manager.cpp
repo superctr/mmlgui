@@ -180,6 +180,35 @@ static inline bool is_loop_event(Event::Type type)
 		return false;
 }
 
+//! Get the length of a loop section.
+static unsigned int get_loop_length(Song& song, Track& track)
+{
+	// This function is a hack only needed in the case where a subroutine ends with a loop section.
+	// Until I properly count the length of subroutines again, this will be necessary.
+	// Example: passport.mml:177
+	int depth = 0;
+	int count = track.get_event(track.get_event_count() - 1).param - 1;
+	int start_time = 0;
+	int end_time = track.get_event(track.get_event_count() - 1).play_time;
+	int break_time = 0;
+	int position = track.get_event_count() - 2;
+	while(position-- > 0)
+	{
+		auto event = track.get_event(position);
+		start_time = event.play_time;
+		if(event.type == Event::LOOP_END)
+			depth++;
+		else if(event.type == Event::LOOP_BREAK && !depth)
+			break_time = end_time - event.play_time;
+		else if(event.type == Event::LOOP_START && depth)
+			depth--;
+		else if(event.type == Event::LOOP_START && !depth)
+			break;
+	}
+	unsigned int result = (end_time - start_time) * count - break_time;
+	return result;
+}
+
 //! Get the length of a subroutine.
 static unsigned int get_subroutine_length(Song& song, unsigned int param, unsigned int max_recursion)
 {
@@ -192,6 +221,8 @@ static unsigned int get_subroutine_length(Song& song, unsigned int param, unsign
 			uint32_t end_time;
 			if(event.type == Event::JUMP && max_recursion != 0)
 				end_time = event.play_time + get_subroutine_length(song, event.param, max_recursion - 1);
+			else if(event.type == Event::LOOP_END)
+				end_time = event.play_time + get_loop_length(song, track);
 			else
 				end_time = event.play_time + event.on_time + event.off_time;
 			return end_time - track.get_event(0).play_time;
