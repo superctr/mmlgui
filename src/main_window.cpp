@@ -7,7 +7,7 @@
 #include <csignal>
 
 //=====================================================================
-static const char* version_string = "alpha version 0.0";
+static const char* version_string = "v0.1";
 
 static const char* gpl_string =
 	"This program is free software; you can redistribute it and/or\n"
