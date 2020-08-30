@@ -148,7 +148,7 @@ void About_Window::display()
 	ImGui::Text("https://github.com/superctr/mmlgui");
 	ImGui::Separator();
 	ImGui::BeginChild("credits", ImVec2(500, 300), false);
-	ImGui::Text(gpl_string);
+	ImGui::Text("%s", gpl_string);
 	ImGui::Separator();
 	ImGui::Text("This program uses the following libraries:");
 	ImGui::BulletText("ctrmml\nBy Ian Karlsson\nGPLv2 or later\nhttps://github.com/superctr/ctrmml");
