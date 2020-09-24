@@ -168,7 +168,7 @@ Emu_Player::Emu_Player(std::shared_ptr<Song> song, uint32_t start_position)
 {
 
 	// TODO: Fix hardcoded driver type
-	driver = std::make_shared<MD_Driver>(1, (VGM_Interface*)this);
+	driver = song->get_platform()->get_driver(1, (VGM_Interface*)this);
 	driver.get()->play_song(*song.get());
 	if(start_position)
 		driver.get()->skip_ticks(start_position);
