@@ -39,6 +39,7 @@ enum Flags
 	DIALOG			= 1<<6,
 	IGNORE_WARNING	= 1<<7,
 	RECOMPILE       = 1<<8,
+	EXPORT			= 1<<9,
 };
 
 Editor_Window::Editor_Window()
@@ -88,6 +89,9 @@ void Editor_Window::display()
 				set_flag(SAVE|DIALOG);
 			if (ImGui::MenuItem("Save As...", "Ctrl+Alt+S"))
 				set_flag(SAVE|SAVE_AS|DIALOG);
+			ImGui::Separator();
+			show_export_menu();
+			ImGui::Separator();
 			if (ImGui::MenuItem("Close", "Ctrl+W"))
 				keep_open = false;
 			ImGui::EndMenu();
@@ -451,7 +455,24 @@ void Editor_Window::handle_file_io()
 		{
 			// TODO: show a message if file couldn't be saved ...
 			clear_flag(DIALOG|SAVE);
-			save_file(filename.c_str());
+			if(save_file(filename.c_str()))
+				player_error = "File couldn't be saved.";
+		}
+	}
+	// export dialog requested
+	else if(test_flag(EXPORT) && !modal_open)
+	{
+		modal_open = 1;
+		fs.saveFileDialog(test_flag(DIALOG), fs.getLastDirectory(), get_export_filename().c_str(), export_filter.c_str());
+		clear_flag(DIALOG);
+		if(strlen(fs.getChosenPath()) > 0)
+		{
+			export_file(fs.getChosenPath());
+			clear_flag(EXPORT);
+		}
+		else if(fs.hasUserJustCancelledDialog())
+		{
+			clear_flag(EXPORT);
 		}
 	}
 }
@@ -489,13 +510,48 @@ int Editor_Window::save_file(const char* fn)
 	return -1;
 }
 
-std::string Editor_Window::get_display_filename()
+void Editor_Window::export_file(const char* fn)
+{
+	try
+	{
+		auto song = song_manager->get_song();
+		auto bytes = song->get_platform()->get_export_data(*song, export_format);
+		auto t = std::ofstream(fn, std::ios::binary);
+		if(t.good())
+			t.write((char*)bytes.data(), bytes.size());
+		else
+			player_error = "Cannot open file '" + std::string(fn) + "'";
+	}
+	catch(InputError& except)
+	{
+		player_error = except.what();
+	}
+	catch(std::exception& except)
+	{
+		player_error = "exception type: ";
+		player_error += typeid(except).name();
+		player_error += "\nexception message: ";
+		player_error += except.what();
+	}
+}
+
+std::string Editor_Window::get_display_filename() const
 {
 	auto pos = filename.rfind("/");
 	if(pos != std::string::npos)
 		return filename.substr(pos+1);
 	else
 		return filename;
+}
+
+std::string Editor_Window::get_export_filename() const
+{
+	auto spos = filename.rfind("/");
+	auto epos = filename.rfind(".");
+	if(spos != std::string::npos)
+		return filename.substr(spos+1, epos-spos-1) + export_filter;
+	else
+		return filename.substr(0, epos) + export_filter;
 }
 
 // move this to top?
@@ -634,4 +690,21 @@ void Editor_Window::show_track_positions()
 		}
 	}
 	editor.SetMmlHighlights(highlights);
+}
+
+void Editor_Window::show_export_menu()
+{
+	auto format_list = song_manager->get_song()->get_platform()->get_export_formats();
+	unsigned int id = 0;
+	for(auto&& i : format_list)
+	{
+		std::string item_title = "Export " + i.second + "...";
+		if (ImGui::MenuItem(item_title.c_str()))
+		{
+			set_flag(EXPORT|DIALOG);
+			export_format = id;
+			export_filter = "." + i.first;
+		}
+		id++;
+	}
 }

@@ -36,11 +36,15 @@ class Editor_Window : public Window
 
 		int load_file(const char* fn);
 		int save_file(const char* fn);
+		void export_file(const char* fn);
 
-		std::string get_display_filename();
+		std::string get_display_filename() const;
+		std::string get_export_filename() const;
 		void show_player_controls();
 		void get_compile_result();
 		void show_track_positions();
+
+		void show_export_menu();
 
 		inline void set_flag(uint32_t data) { flag |= data; };
 		inline void clear_flag(uint32_t data) { flag &= ~data; };
@@ -53,6 +57,10 @@ class Editor_Window : public Window
 		ImGuiFs::Dialog fs;
 		std::string filename;
 		uint32_t flag;
+
+		// Export state
+		std::string export_filter;
+		unsigned int export_format;
 
 		// Song manager state
 		std::shared_ptr<Song_Manager> song_manager;

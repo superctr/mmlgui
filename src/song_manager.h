@@ -9,6 +9,7 @@
 #include <set>
 
 #include "core.h"
+#include "song.h"
 #include "input.h"
 #include "mml_input.h"
 
