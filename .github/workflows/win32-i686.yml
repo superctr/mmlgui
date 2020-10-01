@@ -32,9 +32,11 @@ jobs:
       - name: init-submodules
         run: |
           git submodule update --init --recursive
-      - name: run-unittests
-        run: |
-          make test RELEASE=1
+# cppunit doesn't play nice with github's win32 environment so this is skipped
+# for now
+#     - name: run-unittests
+#       run: |
+#       make test RELEASE=1
       - name: make
         run: |
           make bin/mmlgui RELEASE=1
