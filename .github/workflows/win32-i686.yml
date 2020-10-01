@@ -1,0 +1,44 @@
+name: Win32 i686
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW32
+          update: true
+          install: base-devel git mingw-w64-i686-toolchain mingw-w64-i686-glfw mingw-w64-i686-cppunit mingw-w64-i686-cmake
+      - name: build-libvgm
+        run: |
+          git clone -n https://github.com/valleybell/libvgm
+          cd libvgm
+          git checkout cf1dccf
+          mkdir build
+          cd build
+          cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw32
+          make
+          make install
+      - name: init-submodules
+        run: |
+          git submodule update --init --recursive
+      - name: run-unittests
+        run: |
+          make test RELEASE=1
+      - name: make
+        run: |
+          make bin/mmlgui RELEASE=1
+      - uses: actions/upload-artifact@v2
+        with:
+          name: binary
+          path: bin/mmlgui.exe
