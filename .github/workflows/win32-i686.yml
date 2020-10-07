@@ -23,7 +23,7 @@ jobs:
         run: |
           git clone -n https://github.com/valleybell/libvgm
           cd libvgm
-          git checkout cf1dccf
+          git checkout c159eeb
           mkdir build
           cd build
           cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw32
