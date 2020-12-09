@@ -404,6 +404,7 @@ void Editor_Window::handle_file_io()
 			clear_flag(MODIFIED|FILENAME_SET|NEW|OPEN|SAVE|DIALOG|IGNORE_WARNING);
 			filename = default_filename;
 			editor.SetText("");
+			editor.MoveTop(false);
 		}
 	}
 	// open dialog requested
@@ -487,6 +488,7 @@ int Editor_Window::load_file(const char* fn)
 		filename = fn;
 		std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 		editor.SetText(str);
+		editor.MoveTop(false);
 		return 0;
 	}
 	return -1;
