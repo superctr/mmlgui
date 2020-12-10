@@ -48,6 +48,9 @@ class Track_View_Window : public Window
 
 		std::string get_note_name(uint16_t note) const;
 
+		void update_position();
+		void handle_input();
+
 		double x_pos;
 		double y_pos;
 
@@ -59,6 +62,8 @@ class Track_View_Window : public Window
 		double y_scroll;
 
 		bool y_follow; // If set, follow song position.
+
+		uint32_t y_editor; // last editor Y position
 		uint32_t y_player; // Player Y position
 		double y_user; // User Y position
 

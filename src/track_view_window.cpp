@@ -63,6 +63,8 @@ Track_View_Window::Track_View_Window(std::shared_ptr<Song_Manager> song_mgr)
 	, x_scroll(0.0)
 	, y_scroll(0.0)
 	, y_follow(true)
+	, y_editor(0)
+	, y_player(0)
 	, y_user(0.0)
 	, song_manager(song_mgr)
 	, dragging(false)
@@ -71,6 +73,7 @@ Track_View_Window::Track_View_Window(std::shared_ptr<Song_Manager> song_mgr)
 
 void Track_View_Window::display()
 {
+	// Draw window
 	std::string window_id;
 	window_id = "Track View##" + std::to_string(id);
 
@@ -79,17 +82,14 @@ void Track_View_Window::display()
 
 	ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.2);
 
-	ImGui::InputDouble("Time", &y_user, 1.0f, 1.0f, "%.2f");
+	if(y_player)
+		ImGui::InputScalar("Time", ImGuiDataType_U32, &y_player, NULL, NULL, "%d.00", ImGuiInputTextFlags_ReadOnly);
+	else
+		ImGui::InputDouble("Time", &y_user, 1.0f, 1.0f, "%.2f");
 	ImGui::SameLine();
 	ImGui::InputDouble("Scale", &y_scale_log, 0.01f, 0.1f, "%.2f");
 	ImGui::SameLine();
 	ImGui::Checkbox("Follow", &y_follow);
-	if(y_player)
-	{
-		ImGui::SameLine();
-		ImGui::Text("%d", y_player);
-	}
-	y_scale = std::pow(y_scale_log, 2);
 
 	ImGui::PopItemWidth();
 
@@ -98,47 +98,11 @@ void Track_View_Window::display()
 	if (canvas_size.x < 50.0f) canvas_size.x = 50.0f;
 	if (canvas_size.y < 50.0f) canvas_size.y = 50.0f;
 
+	update_position();
+	handle_input();
+
 	draw_list = ImGui::GetWindowDrawList();
 	cursor_list.clear();
-
-	// handle controls
-	ImGuiIO& io = ImGui::GetIO();
-	ImGui::InvisibleButton("canvas", canvas_size);
-	if(dragging)
-	{
-		if(!ImGui::IsMouseDown(0))
-			dragging = false;
-		else
-			y_scroll = io.MouseDelta.y;
-	}
-	if(ImGui::IsItemHovered())
-	{
-		if(!dragging && ImGui::IsMouseClicked(0))
-			dragging = true;
-		y_scroll += io.MouseWheel * 5;
-	}
-
-	// handle scrolling
-	if(std::abs(y_scroll) >= inertia_threshold)
-	{
-		y_user -= y_scroll / y_scale;
-		y_scroll *= inertia_acceleration;
-		if(y_user < y_min)
-			y_user = y_min;
-	}
-
-	// Get player position
-	auto player =  song_manager->get_player();
-	if(player != nullptr && !player->get_finished())
-		y_player = player->get_driver()->get_player_ticks();
-	else
-		y_player = 0;
-
-	// Set scroll position
-	if(y_follow && y_player)
-		y_pos = y_player - (canvas_size.y / 2.0) / y_scale;
-	else
-		y_pos = y_user - track_header_height / y_scale;
 
 	// draw background
 	draw_list->AddRectFilled(
@@ -172,6 +136,77 @@ void Track_View_Window::display()
 	draw_list->PopClipRect();
 
 	ImGui::End();
+}
+
+//! Update position in follow mode
+void Track_View_Window::update_position()
+{
+	y_scale = std::pow(y_scale_log, 2);
+
+	// Get player position
+	auto player =  song_manager->get_player();
+	if(player != nullptr && !player->get_finished())
+		y_player = player->get_driver()->get_player_ticks();
+	else
+		y_player = 0;
+
+	if(y_follow)
+	{
+		if(y_player)
+		{
+			// Set scroll position to player position in follow mode
+			y_pos = y_player - (canvas_size.y / 2.0) / y_scale;
+			y_scroll = 0;
+			dragging = false;
+		}
+		else if (   song_manager->get_editor_position().line >= 0
+				 && y_editor != song_manager->get_song_pos_at_cursor()
+				 && !song_manager->get_compile_in_progress())
+		{
+			// Set scroll position to editor position in follow mode
+			y_editor = song_manager->get_song_pos_at_cursor();
+			y_user = y_editor - (canvas_size.y / 2.0) / y_scale;
+			if(y_user < 0)
+				y_user = 0;
+			y_scroll = 0;
+			dragging = false;
+		}
+	}
+}
+
+//! Handle user input
+void Track_View_Window::handle_input()
+{
+	// handle controls
+	ImGuiIO& io = ImGui::GetIO();
+	ImGui::InvisibleButton("canvas", canvas_size);
+
+	if(!(y_follow && y_player))
+	{
+		if(dragging)
+		{
+			if(!ImGui::IsMouseDown(0))
+				dragging = false;
+			else
+				y_scroll = io.MouseDelta.y;
+		}
+		if(ImGui::IsItemHovered())
+		{
+			if(!dragging && ImGui::IsMouseClicked(0))
+				dragging = true;
+			y_scroll += io.MouseWheel * 5;
+		}
+
+		// handle scrolling
+		if(std::abs(y_scroll) >= inertia_threshold)
+		{
+			y_user -= y_scroll / y_scale;
+			y_scroll *= inertia_acceleration;
+			if(y_user < y_min)
+				y_user = y_min;
+		}
+		y_pos = y_user - track_header_height / y_scale;
+	}
 }
 
 
