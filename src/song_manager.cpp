@@ -412,7 +412,7 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 		std::stringstream stream(buffer);
 		for(; std::getline(stream, str);)
 		{
-			input.read_line(str, line);
+			input.read_line(tabs_to_spaces(str), line);
 			temp_lines.get()->insert({line, input.get_track_map()});
 			line++;
 		}
@@ -448,5 +448,31 @@ void Song_Manager::compile_job(std::unique_lock<std::mutex>& lock, std::string b
 	lines = temp_lines;
 	error_message = message;
 	error_reference = ref;
+}
+
+//! Convert all tabs to spaces in a string.
+/*!
+ *  Currently tabstop is hardcoded to 4 to match the editor.
+ */
+std::string Song_Manager::tabs_to_spaces(const std::string& str) const
+{
+	const unsigned int tabstop = 4;
+	std::string out = "";
+	for(char i : str)
+	{
+		if(i == '\t')
+		{
+			do
+			{
+				out.push_back(' ');
+			}
+			while(out.size() % tabstop != 0);
+		}
+		else
+		{
+			out.push_back(i);
+		}
+	}
+	return out;
 }
 

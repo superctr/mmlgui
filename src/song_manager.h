@@ -74,6 +74,7 @@ class Song_Manager
 	private:
 		void worker();
 		void compile_job(std::unique_lock<std::mutex>& lock, std::string buffer, std::string filename);
+		std::string tabs_to_spaces(const std::string& str) const;
 
 		// song status
 		const static int max_channels;
