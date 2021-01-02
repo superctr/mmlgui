@@ -71,7 +71,7 @@ To build a release binary, add `RELEASE=1`.
 
 ### Copyright
 
-&copy; 2020 Ian Karlsson
+&copy; 2020-2021 Ian Karlsson
 
 	This program is free software; you can redistribute it and/or modify
 	it under the terms of the GNU General Public License as published by

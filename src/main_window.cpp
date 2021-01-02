@@ -142,7 +142,7 @@ void About_Window::display()
 	ImGui::Begin(window_id.c_str(), &active, ImGuiWindowFlags_AlwaysAutoResize);
 	ImGui::Text("MML (Music Macro Language) editor and player.");
 	ImGui::Text("%s", version_string);
-	ImGui::Text("Copyright 2020 Ian Karlsson.");
+	ImGui::Text("Copyright 2020-2021 Ian Karlsson.");
 	ImGui::Separator();
 	ImGui::Text("Source code repository and issue reporting:");
 	ImGui::Text("https://github.com/superctr/mmlgui");
