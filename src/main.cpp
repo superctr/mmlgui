@@ -87,12 +87,29 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
+static void restyle_with_scale(float scale)
+{
+	const float default_font_size = 13.0f;
+
+	ImGuiStyle& current_style = ImGui::GetStyle();
+	ImGuiStyle new_style;
+	std::copy(current_style.Colors, current_style.Colors + ImGuiCol_COUNT, new_style.Colors);
+	new_style.ScaleAllSizes(scale);
+	current_style = new_style;
+
+	ImFontConfig font_config;
+	font_config.SizePixels = default_font_size * scale;
+	ImGui::GetIO().Fonts->AddFontDefault(&font_config);
+}
+
 int main(int, char**)
 {
 	// Setup window
 	glfwSetErrorCallback(glfw_error_callback);
 	if (!glfwInit())
 		return 1;
+
+	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 
 	Audio_Manager::get().set_sample_rate(44100);
 
@@ -161,6 +178,15 @@ int main(int, char**)
 	// Setup Platform/Renderer bindings
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
+
+	// Setup scaling
+	float scale;
+	glfwGetWindowContentScale(window, &scale, NULL);
+	restyle_with_scale(scale);
+
+	glfwSetWindowContentScaleCallback(window, [](GLFWwindow* window, float xscale, float yscale) {
+		restyle_with_scale(xscale);
+	});
 
 	// Load Fonts
 	// - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
