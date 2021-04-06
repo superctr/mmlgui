@@ -51,6 +51,7 @@ MMLGUI_OBJS = \
 	$(OBJ)/song_manager.o \
 	$(OBJ)/track_info.o \
 	$(OBJ)/track_view_window.o \
+	$(OBJ)/track_list_window.o \
 	$(OBJ)/audio_manager.o \
 	$(OBJ)/emu_player.o \
 	$(OBJ)/config_window.o \

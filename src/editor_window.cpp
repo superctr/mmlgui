@@ -20,6 +20,7 @@
 #include "main_window.h"
 #include "editor_window.h"
 #include "track_view_window.h"
+#include "track_list_window.h"
 
 #include "imgui.h"
 
@@ -160,6 +161,10 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("Track view..."))
 			{
 				children.push_back(std::make_shared<Track_View_Window>(song_manager));
+			}
+			if (ImGui::MenuItem("Track list..."))
+			{
+				children.push_back(std::make_shared<Track_List_Window>(song_manager));
 			}
 			ImGui::Separator();
 			if (ImGui::BeginMenu("Editor style"))
