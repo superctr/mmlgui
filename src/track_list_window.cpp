@@ -27,19 +27,39 @@ void Track_List_Window::display()
 
 	for(auto&& i : map)
 	{
+		bool pop_text = false;
 		int id = i.first;
+
+		if(song_manager->get_mute(id))
+		{
+			ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+			pop_text = true;
+		}
+
 		std::string str = "";
 		if(id < 'Z'-'A')
 			str.push_back(id + 'A');
 		else
 			str = std::to_string(id);
 
-		ImGui::Selectable(str.c_str(), false, ImGuiSelectableFlags_SpanAllColumns);
+		if(ImGui::Selectable(str.c_str(), false, ImGuiSelectableFlags_SpanAllColumns|ImGuiSelectableFlags_AllowDoubleClick))
+		{
+			song_manager->toggle_mute(id);
+			if(ImGui::IsMouseDoubleClicked(0))
+			{
+				song_manager->toggle_solo(id);
+			}
+		}
 		ImGui::NextColumn();
 		ImGui::Text("%5d", i.second.length);
 		ImGui::NextColumn();
 		ImGui::Text("%5d", i.second.loop_length);
 		ImGui::NextColumn();
+
+		if(pop_text)
+		{
+			ImGui::PopStyleColor();
+		}
 	}
 	ImGui::Columns(1);
 	ImGui::Separator();

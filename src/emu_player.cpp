@@ -156,6 +156,12 @@ inline void Device_Wrapper::get_sample(WAVE_32BS* output, int count)
 		Resmpl_Execute(&resmpl, count, output);
 }
 
+inline void Device_Wrapper::set_mute_mask(uint32_t mask)
+{
+	if(dev_init)
+		dev.devDef->SetMuteMask(dev.dataPtr, mask);
+}
+
 //=====================================================================
 
 Emu_Player::Emu_Player(std::shared_ptr<Song> song, uint32_t start_position)
@@ -167,7 +173,6 @@ Emu_Player::Emu_Player(std::shared_ptr<Song> song, uint32_t start_position)
 	, song(song)
 {
 
-	// TODO: Fix hardcoded driver type
 	driver = song->get_platform()->get_driver(1, (VGM_Interface*)this);
 	driver.get()->play_song(*song.get());
 	if(start_position)
@@ -181,6 +186,18 @@ Emu_Player::~Emu_Player()
 std::shared_ptr<Driver>& Emu_Player::get_driver()
 {
 	return driver;
+}
+
+void Emu_Player::set_mute_mask(const std::map<int16_t,uint32_t>& mask_map)
+{
+	for(auto && i : mask_map)
+	{
+		auto dev = devices.find(i.first);
+		if(dev != devices.end())
+		{
+			dev->second.set_mute_mask(i.second);
+		}
+	}
 }
 
 //=====================================================================

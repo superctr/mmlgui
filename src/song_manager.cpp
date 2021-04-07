@@ -14,6 +14,29 @@
 
 const int Song_Manager::max_channels = 16;
 
+// TODO : Use Song to get the correct map for each platform
+const std::map<uint16_t, std::pair<int16_t,uint32_t>> Song_Manager::track_channel_table = {
+	{0, {2, 1<<0}}, // YM2612
+	{1, {2, 1<<1}},
+	{2, {2, 1<<2}},
+	{3, {2, 1<<3}},
+	{4, {2, 1<<4}},
+	{5, {2, (1<<5)|(1<<6)}},
+
+	{6, {0, 1<<0}}, // SN76489
+	{7, {0, 1<<1}},
+	{8, {0, 1<<2}},
+	{9, {0, 1<<3}},
+
+	{10, {2, (1<<5)|(1<<6)}}, // PCM 2,3
+	{11, {2, (1<<5)|(1<<6)}},
+
+	{12, {2, 1<<2}}, // FM3 Dummy
+	{13, {2, 1<<2}},
+	{14, {2, 1<<2}},
+	{15, {2, 1<<2}},
+};
+
 //! constructs a Song_Manager
 Song_Manager::Song_Manager()
 	: worker_ptr(nullptr)
@@ -27,6 +50,7 @@ Song_Manager::Song_Manager()
 	, song_pos_at_line(0)
 	, song_pos_at_cursor(0)
 {
+	reset_mute();
 }
 
 //! Song_Manager destructor
@@ -116,6 +140,7 @@ void Song_Manager::play(uint32_t start_position)
 
 	Audio_Manager& am = Audio_Manager::get();
 	player = std::make_shared<Emu_Player>(get_song(), start_position);
+	player->set_mute_mask(mute_mask);
 	am.add_stream(std::static_pointer_cast<Audio_Stream>(player));
 }
 
@@ -476,3 +501,97 @@ std::string Song_Manager::tabs_to_spaces(const std::string& str) const
 	return out;
 }
 
+std::pair<int16_t,uint32_t> Song_Manager::get_channel(uint16_t track) const
+{
+	auto search = track_channel_table.find(track);
+	if(search != track_channel_table.end())
+	{
+		return search->second;
+	}
+	else
+	{
+		return {-1, 0};
+	}
+}
+
+void Song_Manager::toggle_mute(uint16_t track_id)
+{
+	auto channel = get_channel(track_id);
+	if(channel.first >= 0)
+	{
+		if(get_mute(track_id))
+		{
+			mute_mask[channel.first] &= ~channel.second;
+		}
+		else
+		{
+			mute_mask[channel.first] |= channel.second;
+		}
+	}
+	update_mute();
+}
+
+void Song_Manager::toggle_solo(uint16_t track_id)
+{
+	auto channel = get_channel(track_id);
+	if(channel.first >= 0)
+	{
+		if(get_solo(track_id))
+		{
+			reset_mute();
+		}
+		else
+		{
+			for(auto && i : mute_mask)
+			{
+				if(i.first == channel.first)
+					i.second = ~channel.second;
+				else if(i.first != channel.first)
+					i.second = 0xffffffff;
+			}
+			update_mute();
+		}
+	}
+}
+
+bool Song_Manager::get_mute(uint16_t track_id) const
+{
+	auto channel = get_channel(track_id);
+	auto it = mute_mask.find(channel.first);
+
+	if(channel.first >= 0 && it != mute_mask.end() && it->second & channel.second)
+		return true;
+	else
+		return false;
+}
+
+bool Song_Manager::get_solo(uint16_t track_id) const
+{
+	auto channel = get_channel(track_id);
+	bool is_solo = false;
+	if(channel.first >= 0)
+	{
+		is_solo = true;
+		for(auto && i : mute_mask)
+		{
+			if(i.first == channel.first && i.second != (uint32_t)~channel.second)
+				is_solo = false;
+			else if(i.first != channel.first && i.second != 0xffffffff)
+				is_solo = false;
+		}
+	}
+	return is_solo;
+}
+
+void Song_Manager::reset_mute()
+{
+	mute_mask[0x00] = 0;
+	mute_mask[0x02] = 0;
+	update_mute();
+}
+
+void Song_Manager::update_mute()
+{
+	if(player)
+		player->set_mute_mask(mute_mask);
+}

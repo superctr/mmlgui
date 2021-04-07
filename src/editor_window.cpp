@@ -269,9 +269,14 @@ void Editor_Window::display()
 		show_close_warning();
 
 	if(get_close_request() == Window::CLOSE_OK)
+	{
 		active = false;
+		song_manager->stop();
+	}
 	else
+	{
 		handle_file_io();
+	}
 }
 
 void Editor_Window::close_request()
@@ -410,6 +415,9 @@ void Editor_Window::handle_file_io()
 			filename = default_filename;
 			editor.SetText("");
 			editor.MoveTop(false);
+
+			song_manager->reset_mute();
+			song_manager->stop();
 		}
 	}
 	// open dialog requested
@@ -494,6 +502,9 @@ int Editor_Window::load_file(const char* fn)
 		std::string str((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 		editor.SetText(str);
 		editor.MoveTop(false);
+
+		song_manager->stop();
+		song_manager->reset_mute();
 		return 0;
 	}
 	return -1;

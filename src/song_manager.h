@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_set>
 #include <set>
+#include <map>
 
 #include "core.h"
 #include "song.h"
@@ -71,10 +72,21 @@ class Song_Manager
 		//! Get the song playtime at the cursor pointed at by the editor.
 		inline uint32_t get_song_pos_at_cursor() const { return song_pos_at_cursor; }
 
+		std::pair<int16_t,uint32_t> get_channel(uint16_t track) const;
+
+		void toggle_mute(uint16_t track_id);
+		void toggle_solo(uint16_t track_id);
+
+		bool get_mute(uint16_t track_id) const;
+		bool get_solo(uint16_t track_id) const;
+
+		void reset_mute();
+
 	private:
 		void worker();
 		void compile_job(std::unique_lock<std::mutex>& lock, std::string buffer, std::string filename);
 		std::string tabs_to_spaces(const std::string& str) const;
+		void update_mute();
 
 		// song status
 		const static int max_channels;
@@ -110,6 +122,10 @@ class Song_Manager
 
 		unsigned int song_pos_at_line;
 		unsigned int song_pos_at_cursor;
+
+		// muting
+		std::map<int16_t, uint32_t> mute_mask; // Chip_id, channel_id
+		const static std::map<uint16_t, std::pair<int16_t, uint32_t>> track_channel_table; // Track to channel ID table
 };
 
 #endif

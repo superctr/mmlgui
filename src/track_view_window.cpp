@@ -343,8 +343,18 @@ void Track_View_Window::draw_track_header()
 			ImVec2(
 				x1 + track_width/2 - size.x/2,
 				y1 + y_offset),
-			IM_COL32(255, 255, 255, 255),
+			song_manager->get_mute(id)
+				? IM_COL32(128, 128, 128, 128)
+				: IM_COL32(255, 255, 255, 255),
 			str.c_str());
+
+		if(ImGui::IsItemHovered() && ImGui::IsMouseHoveringRect(ImVec2(x1,y1),ImVec2(x2,y2)))
+		{
+			if(ImGui::IsMouseClicked(0))
+				song_manager->toggle_mute(id);
+			if(ImGui::IsMouseDoubleClicked(0))
+				song_manager->toggle_solo(id);
+		}
 
 		x += std::floor(track_width + padding_width);
 	}

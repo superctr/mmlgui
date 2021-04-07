@@ -34,6 +34,8 @@ class Device_Wrapper
 
 		void get_sample(WAVE_32BS* output, int count);
 
+		void set_mute_mask(uint32_t mask);
+
 	private:
 		DEV_INFO dev;
 		RESMPL_STATE resmpl;
@@ -61,6 +63,8 @@ class Emu_Player
 		virtual ~Emu_Player();
 
 		std::shared_ptr<Driver>& get_driver();
+
+		void set_mute_mask(const std::map<int16_t,uint32_t>& mask_map);
 
 		void setup_stream(uint32_t sample_rate);
 		int get_sample(WAVE_32BS* output, int count, int channels);
