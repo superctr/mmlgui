@@ -11,7 +11,7 @@
 
 //! First time initialization
 Audio_Manager::Audio_Manager()
-	: audio_enabled(0)
+	: driver_sig(-1)
 	, driver_id(-1)
 	, device_id(-1)
 	, sample_rate(44100)
@@ -22,32 +22,21 @@ Audio_Manager::Audio_Manager()
 	, window_handle(nullptr)
 	, driver_handle(nullptr)
 	, waiting_for_handle(false)
+	, audio_initialized(false)
 	, driver_opened(false)
 	, device_opened(false)
-	, driver_names()
-	, device_names()
+	, driver_list()
+	, device_list()
 {
 	if (Audio_Init())
 	{
 		fprintf(stderr, "Warning: audio initialization failed. Muting audio\n");
-		set_audio_enabled(false);
 	}
 	else
 	{
-		set_audio_enabled(true);
+		audio_initialized = true;
+		enumerate_drivers();
 	}
-
-	enumerate_drivers();
-	while(driver_id < (int)driver_names.size())
-	{
-		if(!open_driver())
-			break;
-		driver_id++;
-	}
-	if(driver_opened)
-		open_device();
-	else
-		set_audio_enabled(false);
 }
 
 //! get the singleton instance of Audio_Manager
@@ -57,16 +46,121 @@ Audio_Manager& Audio_Manager::get()
 	return instance;
 }
 
-//! Set global volume
-void Audio_Manager::set_audio_enabled(bool flag)
+void Audio_Manager::set_driver(int new_driver_sig, int new_device_id)
 {
-	audio_enabled = flag;
+	std::string name = "";
+
+	if(!audio_initialized)
+		return;
+
+	// Reset device to default if we have already opened a device
+	device_id = new_device_id;
+
+	close_driver();
+
+	// Find a driver ID
+	driver_sig = new_driver_sig;
+	driver_id = -1;
+	if(driver_sig != -1)
+	{
+		auto it = driver_list.find(driver_sig);
+
+		if(it != driver_list.end())
+		{
+			driver_id = it->second.first;
+			name = it->second.second;
+			open_driver();
+		}
+		else
+		{
+			fprintf(stderr, "Warning: Driver id %02x unavailable, using default\n", driver_sig);
+		}
+	}
+
+	if(driver_id == -1)
+	{
+		// pick the next one automatically if loading fails
+		for(auto && i : driver_list)
+		{
+			driver_sig = i.first;
+			driver_id = i.second.first;
+			name = i.second.second;
+			if(!open_driver())
+				break;
+		}
+	}
+
+	if(driver_opened)
+	{
+		fprintf(stdout, "Loaded audio driver: '%s'\n", name.c_str());
+		enumerate_devices();
+		set_device(device_id);
+	}
+	else
+	{
+		if(driver_id == -1)
+			fprintf(stderr, "Warning: No available drivers\n");
+		else
+			fprintf(stderr, "Warning: Failed to open driver '%s'\n", name.c_str());
+	}
+}
+
+void Audio_Manager::set_device(int new_device_id)
+{
+	std::string name = "";
+
+	if(!driver_opened)
+		return;
+
+	close_device();
+
+	// Find a driver ID
+	device_id = -1;
+	if(new_device_id != -1)
+	{
+		auto it = device_list.find(new_device_id);
+
+		if(it != device_list.end())
+		{
+			device_id = it->first;
+			name = it->second;
+			open_device();
+		}
+		else
+		{
+			fprintf(stderr, "Warning: Device id %02x unavailable, using default\n", new_device_id);
+		}
+	}
+
+	if(device_id == -1)
+	{
+		// pick the next one automatically if loading fails
+		for(auto && i : device_list)
+		{
+			device_id = i.first;
+			name = i.second;
+			if(!open_device())
+				break;
+		}
+	}
+
+	if(!device_opened)
+	{
+		if(device_id == -1)
+			fprintf(stderr, "Warning: No available devices\n");
+		else
+			fprintf(stderr, "Warning: Failed to open device '%s'\n", name.c_str());
+	}
+	else
+	{
+		fprintf(stdout, "Loaded audio device: '%s'\n", name.c_str());
+	}
 }
 
 //! Get global volume
 bool Audio_Manager::get_audio_enabled() const
 {
-	return audio_enabled;
+	return audio_initialized && driver_opened && device_opened;
 }
 
 //! Set window handle (for APIs where this is required)
@@ -75,11 +169,8 @@ void Audio_Manager::set_window_handle(void* new_handle)
 	window_handle = new_handle;
 	if(waiting_for_handle)
 	{
-		waiting_for_handle = false;
-		if(open_driver())
-			set_audio_enabled(false);
-		else
-			set_audio_enabled(true);
+		if(!open_driver())
+			waiting_for_handle = false;
 	}
 	if(driver_opened && !device_opened)
 	{
@@ -130,7 +221,7 @@ int Audio_Manager::add_stream(std::shared_ptr<Audio_Stream> stream)
 void Audio_Manager::clean_up()
 {
 	close_driver();
-	if(audio_enabled)
+	if(audio_initialized)
 		Audio_Deinit();
 }
 
@@ -138,69 +229,57 @@ void Audio_Manager::clean_up()
 
 void Audio_Manager::enumerate_drivers()
 {
+	driver_list.clear();
+
 	unsigned int driver_count = Audio_GetDriverCount();
 	if(!driver_count)
 	{
 		fprintf(stderr, "Warning: no audio drivers available. Muting audio\n");
-		set_audio_enabled(0);
-		return;
 	}
-
-	printf("Available audio drivers ...\n");
-	for(unsigned int i = 0; i < driver_count; i++)
+	else
 	{
-		AUDDRV_INFO* info;
-		Audio_GetDriverInfo(i, &info);
-
-		if(info->drvType)
+		printf("Available audio drivers ...\n");
+		for(unsigned int i = 0; i < driver_count; i++)
 		{
-			printf("%d = '%s' (type = %02x, sig = %02x)\n", i, info->drvName, info->drvType, info->drvSig);
-			driver_names[i] = info->drvName;
-		}
+			AUDDRV_INFO* info;
+			Audio_GetDriverInfo(i, &info);
 
-		// Select the first available non-logging driver.
-		if(info->drvType == ADRVTYPE_OUT && driver_id == -1)
-		{
-			driver_id = i;
+			if(info->drvType == ADRVTYPE_OUT)
+			{
+				printf("%d = '%s' (type = %02x, sig = %02x)\n", i, info->drvName, info->drvType, info->drvSig);
+				driver_list[info->drvSig] = std::make_pair<int, std::string>(i, info->drvName);
+			}
 		}
 	}
-	printf("default = %d\n", driver_id);
 }
 
 void Audio_Manager::enumerate_devices()
 {
-	if(driver_opened)
+	if(!driver_opened)
 		return;
 
-	const AUDIO_DEV_LIST* list;
-	list = AudioDrv_GetDeviceList(driver_handle);
+	device_list.clear();
 
+	const AUDIO_DEV_LIST* list = AudioDrv_GetDeviceList(driver_handle);
 	if(!list->devCount)
 	{
 		fprintf(stderr, "Warning: no audio devices available. Muting audio\n");
-		set_audio_enabled(0);
-		return;
 	}
-
-	printf("Available audio devices ...\n");
-	for(unsigned int i = 0; i < list->devCount; i++)
+	else
 	{
-		AUDDRV_INFO* info;
-		Audio_GetDriverInfo(i, &info);
-
-		if(info->drvType)
+		printf("Available audio devices ...\n");
+		for(unsigned int i = 0; i < list->devCount; i++)
 		{
-			printf("%d = '%s'\n", i, list->devNames[i]);
-			device_names[i] = list->devNames[i];
-		}
+			AUDDRV_INFO* info;
+			Audio_GetDriverInfo(i, &info);
 
-		// Select the first available device
-		if(device_id == -1)
-		{
-			device_id = i;
+			if(info->drvType)
+			{
+				printf("%d = '%s'\n", i, list->devNames[i]);
+				device_list[i] = list->devNames[i];
+			}
 		}
 	}
-	printf("default = %d\n", device_id);
 }
 
 //! Open a driver

@@ -2,6 +2,7 @@
 #include "main_window.h"
 #include "editor_window.h"
 #include "config_window.h"
+#include "audio_manager.h"
 
 #include <iostream>
 #include <csignal>
@@ -35,6 +36,7 @@ static bool debug_imgui_demo_windows = false;
 static bool debug_imgui_metrics = false;
 #endif
 static bool debug_state_window = false;
+static bool debug_audio_window = false;
 
 static void debug_menu()
 {
@@ -44,6 +46,7 @@ static void debug_menu()
 #ifndef IMGUI_DISABLE_DEMO_WINDOWS
 	ImGui::MenuItem("ImGui demo windows", NULL, &debug_imgui_demo_windows);
 #endif
+	ImGui::MenuItem("Select audio device", NULL, &debug_audio_window);
 	ImGui::MenuItem("Display dump state", NULL, &debug_state_window);
 	if (ImGui::MenuItem("Quit"))
 	{
@@ -82,6 +85,47 @@ static void debug_window()
 		ImGui::BeginChild("debug_log", ImGui::GetContentRegionAvail(), false, ImGuiWindowFlags_HorizontalScrollbar);
 		ImGui::TextUnformatted(debug_state.c_str(), debug_state.c_str()+debug_state.size());
 		ImGui::EndChild();
+		ImGui::End();
+	}
+	if(debug_audio_window)
+	{
+		ImGui::Begin("Select Audio Device", &debug_audio_window, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+		auto& am = Audio_Manager::get();
+		auto driver_list = am.get_driver_list();
+		auto driver = am.get_driver();
+		if (ImGui::ListBoxHeader("Audio driver", 5))
+		{
+			if(ImGui::Selectable("Default", driver == -1))
+			{
+				am.set_driver(-1, -1);
+			}
+			for(auto && i : driver_list)
+			{
+				if(ImGui::Selectable(i.second.second.c_str(), driver == i.first))
+				{
+					am.set_driver(i.first, -1);
+				}
+			}
+			ImGui::ListBoxFooter();
+		}
+
+		auto device_list = am.get_device_list();
+		auto device = am.get_device();
+		if (ImGui::ListBoxHeader("Audio device", 5))
+		{
+			if(ImGui::Selectable("Default", device == -1))
+			{
+				am.set_device(-1);
+			}
+			for(auto && i : device_list)
+			{
+				if(ImGui::Selectable(i.second.c_str(), device == i.first))
+				{
+					am.set_device(i.first);
+				}
+			}
+			ImGui::ListBoxFooter();
+		}
 		ImGui::End();
 	}
 }

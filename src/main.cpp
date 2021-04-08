@@ -11,6 +11,7 @@
 #include <stdio.h>
 #include <csignal>
 #include <cstdlib>
+#include <cstring>
 #include <ctime>
 
 // TODO : https://www.gnu.org/software/libc/manual/html_node/Backtraces.html
@@ -60,7 +61,6 @@ using namespace gl;
 // Our state
 Main_Window main_window;
 
-
 static void sig_handler(int signal)
 {
 	// dump current editor state
@@ -102,8 +102,24 @@ static void restyle_with_scale(float scale)
 	ImGui::GetIO().Fonts->AddFontDefault(&font_config);
 }
 
-int main(int, char**)
+int main(int argc, char* argv[])
 {
+	int driver_id = -1;
+	int device_id = -1;
+	int carg = 1;
+	while(carg < argc)
+	{
+		if(!std::strcmp(argv[carg], "--driver-id") && (argc > carg))
+		{
+			driver_id = strtol(argv[++carg], NULL, 0);
+		}
+		if(!std::strcmp(argv[carg], "--device-id") && (argc > carg))
+		{
+			device_id = strtol(argv[++carg], NULL, 0);
+		}
+		carg++;
+	}
+
 	// Setup window
 	glfwSetErrorCallback(glfw_error_callback);
 	if (!glfwInit())
@@ -141,6 +157,7 @@ int main(int, char**)
 	// libvgm DSound support may require the window handle
 	Audio_Manager::get().set_window_handle(glfwGetWin32Window(window));
 #endif
+	Audio_Manager::get().set_driver(driver_id, device_id);
 
 	// Initialize OpenGL loader
 #if defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)

@@ -78,7 +78,6 @@ class Audio_Manager
 
 		static Audio_Manager& get();
 
-		void set_audio_enabled(bool status);
 		bool get_audio_enabled() const;
 
 		void set_window_handle(void* new_handle);
@@ -87,7 +86,16 @@ class Audio_Manager
 		void set_volume(float new_volume);
 		float get_volume() const;
 
+		void set_driver(int new_driver_sig, int new_device_id = -1);
+		inline int get_driver() const { return driver_sig; };
+
+		void set_device(int new_device_id);
+		inline int get_device() const { return device_id; };
+
 		int add_stream(std::shared_ptr<Audio_Stream> stream);
+
+		const std::map<int, std::pair<int,std::string>>& get_driver_list() const { return driver_list; }
+		const std::map<int, std::string>& get_device_list() const { return device_list; }
 
 		void clean_up();
 
@@ -107,10 +115,10 @@ class Audio_Manager
 
 		static uint32_t callback(void* drv_struct, void* user_param, uint32_t buf_size, void* data);
 
-		bool audio_enabled;
+		int driver_sig; // Actual driver signature, -1 if not loaded
+		int driver_id;  // Actual driver id, -1 if not loaded
+		int device_id;  // Actual device id, -1 if not loaded
 
-		int driver_id;
-		int device_id;
 		uint32_t sample_rate;
 		uint32_t sample_size;
 
@@ -122,11 +130,12 @@ class Audio_Manager
 		void* driver_handle;
 
 		bool waiting_for_handle;
+		bool audio_initialized;
 		bool driver_opened;
 		bool device_opened;
 
-		std::map<int, std::string> driver_names;
-		std::map<int, std::string> device_names;
+		std::map<int, std::pair<int,std::string>> driver_list;
+		std::map<int, std::string> device_list;
 
 		std::mutex mutex;
 };
