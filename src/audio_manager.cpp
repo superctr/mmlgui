@@ -78,6 +78,8 @@ void Audio_Manager::set_window_handle(void* new_handle)
 		waiting_for_handle = false;
 		if(open_driver())
 			set_audio_enabled(false);
+		else
+			set_audio_enabled(true);
 	}
 	if(driver_opened && !device_opened)
 	{
@@ -223,6 +225,15 @@ int Audio_Manager::open_driver()
 		printf("AudioDrv_Init error %02x\n", error_code);
 		return -1;
 	}
+
+#ifdef AUDDRV_DSOUND
+	if(info->drvSig == ADRVSIG_DSOUND && window_handle)
+	{
+		void* dsoundDrv;
+		dsoundDrv = AudioDrv_GetDrvData(driver_handle);
+		DSound_SetHWnd(dsoundDrv, (HWND)window_handle);
+	}
+#endif
 
 #ifdef AUDDRV_PULSE
 	if(info->drvSig == ADRVSIG_PULSE)
