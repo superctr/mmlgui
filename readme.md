@@ -9,15 +9,19 @@ MML (Music Macro Language) editor and compiler GUI. Powered by the [ctrmml](http
 - Supports Sega Mega Drive sound chips (YM2612, SN76489)
 - Visualization of MML tracks
 - Highlights currently playing notes in the editor window
+- VGM and MDS file export
+- Supports channel muting/isolation
 
 ### Future features / TODO
 
 - Configuration window
-- Export to MDSDRV (Sound driver for Sega Mega Drive)
 - Support more sound chips
 - More track visualizations
 
 ## Using
+
+Feel free to join the [Discord server](https://discord.com/invite/BPwM6PJv7T)
+if you have any questions or feedback.
 
 See [ctrmml/mml_ref.md](ctrmml/mml_ref.md) for an MML reference.
 
