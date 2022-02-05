@@ -37,6 +37,7 @@ class Editor_Window : public Window
 		int load_file(const char* fn);
 		int save_file(const char* fn);
 		void export_file(const char* fn);
+		int import_file(const char* fn);
 
 		std::string get_display_filename() const;
 		std::string get_export_filename() const;

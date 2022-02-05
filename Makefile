@@ -31,6 +31,10 @@ $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CFLAGS) -MMD -c $< -o $@
 
+$(OBJ)/%.o: $(SRC)/%.c
+	@mkdir -p $(@D)
+	$(CXX) $(CFLAGS) -MMD -c $< -o $@
+
 #======================================================================
 
 MMLGUI_BIN = $(BIN)/mmlgui
@@ -55,6 +59,8 @@ MMLGUI_OBJS = \
 	$(OBJ)/audio_manager.o \
 	$(OBJ)/emu_player.o \
 	$(OBJ)/config_window.o \
+	$(OBJ)/miniz.o \
+	$(OBJ)/dmf_importer.o \
 
 LDFLAGS_MMLGUI := $(LDFLAGS_IMGUI) $(LDFLAGS_CTRMML) $(LDFLAGS_LIBVGM)
 

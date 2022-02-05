@@ -22,6 +22,8 @@
 #include "track_view_window.h"
 #include "track_list_window.h"
 
+#include "dmf_importer.h"
+
 #include "imgui.h"
 
 #include <GLFW/glfw3.h>
@@ -41,6 +43,7 @@ enum Flags
 	IGNORE_WARNING	= 1<<7,
 	RECOMPILE       = 1<<8,
 	EXPORT			= 1<<9,
+	IMPORT			= 1<<10,
 };
 
 Editor_Window::Editor_Window()
@@ -91,6 +94,8 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("Save As...", "Ctrl+Alt+S"))
 				set_flag(SAVE|SAVE_AS|DIALOG);
 			ImGui::Separator();
+			if (ImGui::MenuItem("Import patches from DMF...", nullptr, nullptr, !editor.IsReadOnly()))
+				set_flag(IMPORT|DIALOG);
 			show_export_menu();
 			ImGui::Separator();
 			if (ImGui::MenuItem("Close", "Ctrl+W"))
@@ -489,6 +494,21 @@ void Editor_Window::handle_file_io()
 			clear_flag(EXPORT);
 		}
 	}
+	else if(test_flag(IMPORT) && !modal_open)
+	{
+		modal_open = 1;
+		fs.chooseFileDialog(test_flag(DIALOG), fs.getLastDirectory(), ".dmf");
+		clear_flag(DIALOG);
+		if(strlen(fs.getChosenPath()) > 0)
+		{
+			import_file(fs.getChosenPath());
+			clear_flag(IMPORT);
+		}
+		else if(fs.hasUserJustCancelledDialog())
+		{
+			clear_flag(IMPORT);
+		}
+	}
 }
 
 int Editor_Window::load_file(const char* fn)
@@ -505,6 +525,20 @@ int Editor_Window::load_file(const char* fn)
 
 		song_manager->stop();
 		song_manager->reset_mute();
+		return 0;
+	}
+	return -1;
+}
+
+int Editor_Window::import_file(const char* fn)
+{
+	auto t = Dmf_Importer(fn);
+	player_error += t.get_error();
+	if (!player_error.size())
+	{
+		clear_flag(MODIFIED);
+		set_flag(FILENAME_SET|RECOMPILE);
+		editor.InsertText(t.get_mml());
 		return 0;
 	}
 	return -1;
