@@ -1,6 +1,8 @@
 mmlgui
 ======
 
+### [Latest automatic build can be found here](https://nightly.link/superctr/mmlgui/workflows/win32-i686/master/binary)
+
 MML (Music Macro Language) editor and compiler GUI. Powered by the [ctrmml](https://github.com/superctr/ctrmml) framework.
 
 ## Features
@@ -19,6 +21,8 @@ MML (Music Macro Language) editor and compiler GUI. Powered by the [ctrmml](http
 - More track visualizations
 
 ## Using
+
+For Windows (or Wine) users, you can download the latest automatic build from [here](https://nightly.link/superctr/mmlgui/workflows/win32-i686/master/binary)
 
 Feel free to join the [Discord server](https://discord.com/invite/BPwM6PJv7T)
 if you have any questions or feedback.
