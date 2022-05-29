@@ -380,6 +380,17 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 					{
 						case -1:
 							break;
+						case 0xEC: //note cut
+							writer.patterns[pattern].channels[channel].rows[ticks + effect.second] = {RowType::REST, 0, 0, ""};
+							last_was_note[channel] = false;
+							break;
+						case 0xED: //note delay
+							delay = effect.second; // deflemask probably only delays the note and not other stuff but whatev
+							break;
+						case 0x03: //tone portamento (incomplete)
+							if(out_row.type == RowType::NOTE)
+								out_row.type = RowType::SLUR;
+							break;
 						case 0x08: //panning
 							printf("effect %02x%02x\n", effect.first, effect.second);
 							out_row.mml += stringf("p%d", (effect.second & 0x01) | ((effect.second & 0x10) >> 3));
