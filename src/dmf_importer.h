@@ -34,6 +34,15 @@ class Dmf_Importer
 		uint8_t speed;
 		uint8_t highlight_b;
 
+		std::string channel_map;
+
+		// Channel type:
+		// A-Z -> 7-bit volume, 0=max
+		// a-z -> 4-bit volume, 15=max
+		// 'F' = standard FM, 'S' = FM3 special mode
+		// 'p' = standard PSG, 'n' = PSG noise
+		std::string channel_type;
+
 		struct Channel_Row {
 			int16_t note = 0;
 			int16_t octave = 0;
@@ -72,13 +81,16 @@ class Pattern_Mml_Writer
 			std::vector<Channel> channels;
 		};
 
-		Pattern_Mml_Writer(int initial_whole_len = 96, int number_of_patterns = 1);
+		Pattern_Mml_Writer(int initial_whole_len, int number_of_patterns, std::string& initial_channel_map);
 		std::string output_all();
 		std::string output_line(int pattern, int channel, int default_length);
 		std::string convert_length(int length, int starting_time, int default_length, char tie_char);
 
 		int whole_len;
+		int measure_len;
 		int smallest_len;
+
+		std::string channel_map;
 		std::vector<Pattern> patterns;
 };
 

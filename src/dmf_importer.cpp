@@ -99,9 +99,15 @@ void Dmf_Importer::parse()
 		return;
 	}
 
+	channel_map =  "ABCDEFGHIJ";
+	channel_type = "FFFFFFsssn";
 	channel_count = 10;
 	if(system & 0x40)
+	{
 		channel_count += 3;
+		channel_map =  "ABCMNODEFGHIJ";
+		channel_type = "FFFSSSFFFsssn";
+	}
 
 	// Skip song name
 	tmp8 = *dmfptr++;
@@ -197,7 +203,7 @@ void Dmf_Importer::parse()
 	}
 
 	// Parse patterns
-	Pattern_Mml_Writer writer(speed * highlight_b, matrix_rows);
+	Pattern_Mml_Writer writer(speed * highlight_b, matrix_rows, channel_map);
 	parse_patterns(writer);
 
 	mml_output += writer.output_all();
@@ -325,7 +331,10 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 				if(in_row.volume != -1)
 				{
 					insert_event = true;
-					out_row.mml += stringf("V%d",127 - in_row.volume);
+					if(channel_type[channel] <= 'Z')
+						out_row.mml += stringf("V%d",127 - in_row.volume);
+					else
+						out_row.mml += stringf("v%d",in_row.volume);
 				}
 
 				for(auto && effect : in_row.effects)
@@ -358,8 +367,10 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 
 //================
 
-Pattern_Mml_Writer::Pattern_Mml_Writer(int initial_whole_len, int number_of_patterns)
+Pattern_Mml_Writer::Pattern_Mml_Writer(int initial_whole_len, int number_of_patterns, std::string& initial_channel_map)
 	: whole_len(initial_whole_len)
+	, measure_len(initial_whole_len)
+	, channel_map(initial_channel_map)
 {
 	patterns.resize(number_of_patterns);
 
@@ -371,6 +382,7 @@ Pattern_Mml_Writer::Pattern_Mml_Writer(int initial_whole_len, int number_of_patt
 	printf("whole_len = %d\n",whole_len);
 	printf("smallest_len = %d\n",smallest_len);
 
+#if 0 // move this to unittests
 	std::cout << "192 = " << convert_length(192, 0, 16, '^') << "\n";
 	std::cout << "96 = " << convert_length(96, 0, 16, '^') << "\n";
 	std::cout << "48 = " << convert_length(48, 0, 16, '^') << "(l1) \n";
@@ -386,12 +398,21 @@ Pattern_Mml_Writer::Pattern_Mml_Writer(int initial_whole_len, int number_of_patt
 	std::cout << "3 = " << convert_length(3, 0, 16, '^') << "(l16)\n";
 	std::cout << "2 = " << convert_length(2, 0, 16, '^') << "\n";
 	std::cout << "1 = " << convert_length(3, 0, 16, '^') << "\n";
+#endif
 }
 
 std::string Pattern_Mml_Writer::output_all()
 {
 	std::string output;
 
+	// initial tempo
+	for(unsigned int channel = 0; channel < patterns[0].channels.size(); channel++)
+	{
+		output += channel_map[channel]; //'A' + channel;
+	}
+	output += stringf(" C%d\n", whole_len);
+
+	// patterns
 	for(unsigned int pattern = 0; pattern < patterns.size(); pattern++)
 	{
 		output += stringf("\n; Pattern %d\n", pattern);
@@ -417,10 +438,10 @@ std::string Pattern_Mml_Writer::output_all()
 
 std::string Pattern_Mml_Writer::output_line(int pattern, int channel, int default_length)
 {
+	// Maybe implement key signatures?
 	static const char* note_mapping[12] = {"c","c+","d","d+","e","f","f+","g","g+","a","a+","b"};
 
-	//TODO: channel mapping
-	std::string output = stringf("%c ", 'A'+channel);
+	std::string output = stringf("%c ", channel_map[channel]);
 	auto& rows = patterns[pattern].channels[channel].rows;
 	int octave = -100;
 
@@ -436,7 +457,6 @@ std::string Pattern_Mml_Writer::output_line(int pattern, int channel, int defaul
 			length = it->first - time;
 		it--;
 
-		//output += stringf("'Time:%d/%d'",time,patterns[pattern].length);
 		output += it->second.mml;
 
 		if(length)
@@ -487,28 +507,30 @@ std::string Pattern_Mml_Writer::convert_length(int length, int starting_time, in
 	std::string output = "";
 
 	// always tie notes across measures..
-	if(starting_time && ((starting_time % whole_len) + length) > whole_len)
+	if(starting_time && ((starting_time % measure_len) + length) > measure_len)
 	{
-		int first_length = whole_len - (starting_time % whole_len);
+		int first_length = measure_len - (starting_time % measure_len);
 		output += convert_length(first_length, starting_time, default_length, tie_char);
 		starting_time += first_length;
 		length -= first_length;
 
 		if(length)
-			output += stringf("%c",tie_char);
+			output += tie_char; // stringf("%c",tie_char);
 	}
 
 	// add whole notes (or rests)
 	while(length >= whole_len)
 	{
+		//TODO: will need to handle odd time signatures here
 		if(default_length != 1)
 			output += "1";
 		starting_time += whole_len;
 		length -= whole_len;
 		if(length)
-			output += stringf("%c",tie_char);
+			output += tie_char; //stringf("%c",tie_char);
 	}
 
+	// add frame durations if not possible to divide into a power of two
 	if(length && length < (whole_len/smallest_len))
 	{
 		output += stringf(":%d",length);
@@ -516,6 +538,8 @@ std::string Pattern_Mml_Writer::convert_length(int length, int starting_time, in
 		starting_time += length;
 		length = 0;
 	}
+
+	// add note values
 	else if(length)
 	{
 		int note_length = whole_len/smallest_len;
@@ -533,6 +557,7 @@ std::string Pattern_Mml_Writer::convert_length(int length, int starting_time, in
 		starting_time += note_length;
 		length -= note_length;
 
+		// add dots
 		if(!(note_length & 1))
 		{
 			note_length >>= 1;
@@ -549,14 +574,16 @@ std::string Pattern_Mml_Writer::convert_length(int length, int starting_time, in
 			}
 		}
 
+		// add additional tied notes
 		if(length)
 		{
-			output += stringf("%c",tie_char);
+			output += tie_char; // stringf("%c",tie_char);
 			output += convert_length(length, starting_time, default_length, tie_char);
 		}
 	}
 
-	if(!(starting_time % whole_len))
+	// separate between measures
+	if(!(starting_time % measure_len))
 		output += " ";
 
 	return output;
