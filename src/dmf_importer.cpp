@@ -15,6 +15,8 @@
 #define MINIZ_HEADER_FILE_ONLY
 #include "miniz.c"
 
+typedef Pattern_Mml_Writer::Row::Type RowType;
+
 Dmf_Importer::Dmf_Importer(const char* filename)
 {
 	if(std::ifstream is{filename, std::ios::binary | std::ios::ate})
@@ -58,6 +60,11 @@ std::string Dmf_Importer::get_mml()
 static inline uint32_t read_le32(uint8_t* data)
 {
 	return data[0]|(data[1]<<8)|(data[2]<<16)|(data[3]<<24);
+}
+
+static inline uint32_t read_le16(uint8_t* data)
+{
+	return data[0]|(data[1]<<8);
 }
 
 static inline std::string read_str(uint8_t* data, uint8_t length)
@@ -104,8 +111,16 @@ void Dmf_Importer::parse()
 	tmp8 = *dmfptr++;
 	dmfptr += tmp8;
 
-	// Skip highlight A/B, timebase, frame mode, custom HZ
-	dmfptr += 10;
+	// Skip highlight A and get highlight B
+	dmfptr += 1;
+	highlight_b = *dmfptr++;
+
+	// Get timebase and tempo A
+	tmp8 = 1 + *dmfptr++;
+	speed = tmp8 * *dmfptr++;
+
+	// Skip tempo 2, frame mode, custom HZ
+	dmfptr += 6;
 
 	pattern_rows = read_le32(dmfptr);
 	dmfptr += 4;
@@ -142,6 +157,50 @@ void Dmf_Importer::parse()
 			return;
 		}
 	}
+
+	// Skip wavetables
+	tmp8 = *dmfptr++;
+	for(int wt_counter = 0; wt_counter < tmp8; wt_counter++)
+	{
+		uint32_t wtsize = read_le32(dmfptr);
+		dmfptr += 4 + wtsize * 4;
+	}
+
+	// Read channels
+	channel_pattern_rows.resize(channel_count);
+	for(int ch = 0; ch < channel_count; ch++)
+	{
+		// Read patterns
+		channel_pattern_rows[ch].resize(matrix_rows);
+		uint8_t effect_column_count = *dmfptr++;
+		for(int pat = 0; pat < matrix_rows; pat++)
+		{
+			for(int row = 0; row < pattern_rows; row++)
+			{
+				Dmf_Importer::Channel_Row in_row;
+				in_row.note = read_le16(dmfptr);
+				in_row.octave = read_le16(dmfptr+2);
+				in_row.volume = read_le16(dmfptr+4);
+				dmfptr += 6;
+				for(int effect = 0; effect < effect_column_count; effect++)
+				{
+					int16_t effect_code = read_le16(dmfptr);
+					int16_t effect_value = read_le16(dmfptr);
+					in_row.effects.push_back({effect_code,effect_value});
+					dmfptr += 4;
+				}
+				in_row.instrument = read_le16(dmfptr);
+				dmfptr += 2;
+				channel_pattern_rows[ch][pat].push_back(in_row);
+			}
+		}
+	}
+
+	// Parse patterns
+	Pattern_Mml_Writer writer(speed * highlight_b, matrix_rows);
+	parse_patterns(writer);
+
+	mml_output += writer.output_all();
 }
 
 #define ALG ptr[0]
@@ -205,4 +264,300 @@ uint8_t* Dmf_Importer::parse_psg_instrument(uint8_t* ptr, int id, std::string st
 	}
 
 	return ptr;
+}
+
+//! Plays back DMF patterns and creates an MML event stream.
+void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
+{
+	int pattern = 0;
+	int ticks = 0;
+	int row = 0;
+	int speed = this->speed;
+
+	printf("speed %d\n", speed);
+
+	std::vector<int> last_was_note(channel_count, 0);
+	std::vector<int> last_instrument(channel_count, -1);
+
+	while(pattern < matrix_rows)
+	{
+		for(int channel = 0; channel < channel_count; channel++)
+		{
+			RowType type = last_was_note[channel] ? RowType::TIE : RowType::REST;
+			writer.patterns[pattern].channels.resize(channel_count);
+			writer.patterns[pattern].channels[channel].optimizable = true;
+			writer.patterns[pattern].channels[channel].rows[0] = {type, 0, 0, ""};
+		}
+
+		for(row = 0; row < pattern_rows; row ++)
+		{
+			for(int channel = 0; channel < channel_count; channel++)
+			{
+				bool insert_event = false;
+				int delay = 0;
+
+				Channel_Row& in_row = channel_pattern_rows[channel][pattern][row];
+
+				Pattern_Mml_Writer::Row out_row;
+				out_row.type = last_was_note[channel] ? RowType::TIE : RowType::REST;
+
+				if(in_row.note == 100)
+				{
+					insert_event = true;
+					out_row.type = RowType::REST;
+					last_was_note[channel] = false;
+				}
+				else if(in_row.note != 0)
+				{
+					insert_event = true;
+					out_row.type = RowType::NOTE;
+					out_row.note = in_row.note % 12;
+					out_row.octave = ((in_row.note == 12) ? 2 : 1) + in_row.octave;
+					if(in_row.instrument != -1 && in_row.instrument != last_instrument[channel])
+					{
+						out_row.mml += stringf("@%d",in_row.instrument);
+						last_instrument[channel] = in_row.instrument;
+					}
+					last_was_note[channel] = true;
+				}
+
+				//TODO: PSG volume
+				if(in_row.volume != -1)
+				{
+					insert_event = true;
+					out_row.mml += stringf("V%d",127 - in_row.volume);
+				}
+
+				for(auto && effect : in_row.effects)
+				{
+					switch(effect.first)
+					{
+						case -1:
+							break;
+						default:
+							writer.patterns[pattern].channels[channel].optimizable = false;
+							break;
+					}
+				}
+
+				if(insert_event)
+				{
+					writer.patterns[pattern].channels[channel].rows[ticks + delay] = out_row;
+				}
+			}
+			ticks += speed;
+		}
+
+		writer.patterns[pattern].length = ticks;
+		ticks = 0;
+		row = 0;
+		pattern ++;
+	}
+
+}
+
+//================
+
+Pattern_Mml_Writer::Pattern_Mml_Writer(int initial_whole_len, int number_of_patterns)
+	: whole_len(initial_whole_len)
+{
+	patterns.resize(number_of_patterns);
+
+	smallest_len = 1;
+	while(!((whole_len / smallest_len) & 1))
+	{
+		smallest_len <<= 1;
+	}
+	printf("whole_len = %d\n",whole_len);
+	printf("smallest_len = %d\n",smallest_len);
+
+	std::cout << "192 = " << convert_length(192, 0, 16, '^') << "\n";
+	std::cout << "96 = " << convert_length(96, 0, 16, '^') << "\n";
+	std::cout << "48 = " << convert_length(48, 0, 16, '^') << "(l1) \n";
+	std::cout << "24 = " << convert_length(24, 0, 16, '^') << "(l2) \n";
+	std::cout << "21 = " << convert_length(21, 0, 16, '^') << "(l4..)\n";
+	std::cout << "18 = " << convert_length(18, 0, 16, '^') << "(l4.)\n";
+	std::cout << "15 = " << convert_length(15, 0, 16, '^') << "(l4^16)\n";
+	std::cout << "12 = " << convert_length(12, 0, 16, '^') << "(l4) \n";
+	std::cout << "9 = " << convert_length(9, 0, 16, '^') << "(l8.)\n";
+	std::cout << "6 = " << convert_length(6, 0, 16, '^') << "(l8)\n";
+	std::cout << "5 = " << convert_length(5, 0, 16, '^') << "\n";
+	std::cout << "4 = " << convert_length(4, 0, 16, '^') << "\n";
+	std::cout << "3 = " << convert_length(3, 0, 16, '^') << "(l16)\n";
+	std::cout << "2 = " << convert_length(2, 0, 16, '^') << "\n";
+	std::cout << "1 = " << convert_length(3, 0, 16, '^') << "\n";
+}
+
+std::string Pattern_Mml_Writer::output_all()
+{
+	std::string output;
+
+	for(unsigned int pattern = 0; pattern < patterns.size(); pattern++)
+	{
+		output += stringf("\n; Pattern %d\n", pattern);
+
+		for(unsigned int channel = 0; channel < patterns[pattern].channels.size(); channel++)
+		{
+			int default_len = smallest_len >> 1;
+			std::string smallest = output_line(pattern, channel, smallest_len);
+			while(default_len > 0)
+			{
+				std::string test = output_line(pattern, channel, default_len);
+				//printf("testing %d, size = %d vs %d\n", default_len, test.size(), smallest.size());
+				if(test.size() < smallest.size())
+					smallest = test;
+				default_len >>= 1;
+			}
+			output += smallest + "\n";
+		}
+	}
+
+	return output;
+}
+
+std::string Pattern_Mml_Writer::output_line(int pattern, int channel, int default_length)
+{
+	static const char* note_mapping[12] = {"c","c+","d","d+","e","f","f+","g","g+","a","a+","b"};
+
+	//TODO: channel mapping
+	std::string output = stringf("%c ", 'A'+channel);
+	auto& rows = patterns[pattern].channels[channel].rows;
+	int octave = -100;
+
+	if(default_length > 0)
+		output += stringf("l%d ",default_length);
+
+	for(auto it = rows.begin(); it != rows.end(); it ++)
+	{
+		int time = it->first;
+		int length = patterns[pattern].length - it->first;
+		it++; //iterator dancing...
+		if(it != rows.end())
+			length = it->first - time;
+		it--;
+
+		//output += stringf("'Time:%d/%d'",time,patterns[pattern].length);
+		output += it->second.mml;
+
+		if(length)
+		{
+			char tie_character = '^';
+			switch(it->second.type)
+			{
+				case RowType::TIE:
+					output += "^";
+					break;
+				case RowType::SLUR:
+					output += "&";
+					//fall through
+				case RowType::NOTE:
+					if(it->second.octave == (octave - 1))
+						output += "<";
+					else if(it->second.octave == (octave + 1))
+						output += ">";
+					else if(it->second.octave != octave)
+						output += stringf("o%d",it->second.octave);
+					octave = it->second.octave;
+					output += note_mapping[it->second.note % 12];
+					break;
+				case RowType::REST:
+					output += "r";
+					tie_character = 'r';
+					break;
+				default:
+					output += "BUG!!!!";
+					break;
+			}
+			output += convert_length(length, time, default_length, tie_character);
+			time += length;
+		}
+	}
+
+	if(output.back() == ' ')
+		output.pop_back();
+
+	return output;
+}
+
+std::string Pattern_Mml_Writer::convert_length(int length, int starting_time, int default_length, char tie_char)
+{
+	if(default_length < 0)
+		return stringf(":%d",length);
+
+	std::string output = "";
+
+	// always tie notes across measures..
+	if(starting_time && ((starting_time % whole_len) + length) > whole_len)
+	{
+		int first_length = whole_len - (starting_time % whole_len);
+		output += convert_length(first_length, starting_time, default_length, tie_char);
+		starting_time += first_length;
+		length -= first_length;
+
+		if(length)
+			output += stringf("%c",tie_char);
+	}
+
+	// add whole notes (or rests)
+	while(length >= whole_len)
+	{
+		if(default_length != 1)
+			output += "1";
+		starting_time += whole_len;
+		length -= whole_len;
+		if(length)
+			output += stringf("%c",tie_char);
+	}
+
+	if(length && length < (whole_len/smallest_len))
+	{
+		output += stringf(":%d",length);
+
+		starting_time += length;
+		length = 0;
+	}
+	else if(length)
+	{
+		int note_length = whole_len/smallest_len;
+		int mml_length = smallest_len << 1;
+		while(length >= note_length)
+		{
+			note_length <<= 1;
+			mml_length >>= 1;
+		}
+
+		if(default_length != mml_length)
+			output += stringf("%d",mml_length);
+
+		note_length >>= 1;
+		starting_time += note_length;
+		length -= note_length;
+
+		if(!(note_length & 1))
+		{
+			note_length >>= 1;
+			int dots = 0;
+			while(length >= note_length && dots < 2)
+			{
+				length -= note_length;
+				starting_time += note_length;
+				output += ".";
+				dots ++;
+				if(note_length & 1)
+					break;
+				note_length >>= 1;
+			}
+		}
+
+		if(length)
+		{
+			output += stringf("%c",tie_char);
+			output += convert_length(length, starting_time, default_length, tie_char);
+		}
+	}
+
+	if(!(starting_time % whole_len))
+		output += " ";
+
+	return output;
 }
