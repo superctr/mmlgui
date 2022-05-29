@@ -67,6 +67,15 @@ static inline uint32_t read_le16(uint8_t* data)
 	return data[0]|(data[1]<<8);
 }
 
+static inline uint32_t read_rate(uint8_t* data)
+{
+	int max = 3; // max 3 characters
+	uint32_t rate = 0;
+	while(*data && max--)
+		rate = (rate*10) + ((*data++) & 0x0f);
+	return rate;
+}
+
 static inline std::string read_str(uint8_t* data, uint8_t length)
 {
 	std::string out;
@@ -92,7 +101,7 @@ void Dmf_Importer::parse()
 		return;
 	}
 
-	uint8_t system = *dmfptr++;
+	system = *dmfptr++;
 	if((system & 0x3f) != 0x02)
 	{
 		error_output = "Sorry, the DMF must be a GENESIS module.\n";
@@ -106,7 +115,7 @@ void Dmf_Importer::parse()
 	{
 		channel_count += 3;
 		channel_map =  "ABCMNODEFGHIJ";
-		channel_type = "FFFSSSFFFsssn";
+		channel_type = "FFSSSSFFFsssn";
 	}
 
 	// Skip song name
@@ -117,16 +126,23 @@ void Dmf_Importer::parse()
 	tmp8 = *dmfptr++;
 	dmfptr += tmp8;
 
-	// Skip highlight A and get highlight B
-	dmfptr += 1;
+	// get highlight A and B. A should be the beat value and B the measure length
+	// Although few DMF modules actually conform to this.
+	highlight_a = *dmfptr++;
 	highlight_b = *dmfptr++;
 
 	// Get timebase and tempo A
 	tmp8 = 1 + *dmfptr++;
 	speed = tmp8 * *dmfptr++;
 
-	// Skip tempo 2, frame mode, custom HZ
-	dmfptr += 6;
+	// Skip tempo 2
+	dmfptr ++;
+
+	// custom rate (this Hz a lot)
+	rate = (*dmfptr++) ? 60 : 50;
+	if(*dmfptr++)
+		rate = read_rate(dmfptr);
+	dmfptr += 3;
 
 	pattern_rows = read_le32(dmfptr);
 	dmfptr += 4;
@@ -191,7 +207,7 @@ void Dmf_Importer::parse()
 				for(int effect = 0; effect < effect_column_count; effect++)
 				{
 					int16_t effect_code = read_le16(dmfptr);
-					int16_t effect_value = read_le16(dmfptr);
+					int16_t effect_value = read_le16(dmfptr+2);
 					in_row.effects.push_back({effect_code,effect_value});
 					dmfptr += 4;
 				}
@@ -203,8 +219,29 @@ void Dmf_Importer::parse()
 	}
 
 	// Parse patterns
-	Pattern_Mml_Writer writer(speed * highlight_b, matrix_rows, channel_map);
+	uint32_t whole_len = 4 * speed * highlight_a;
+	Pattern_Mml_Writer writer(whole_len, speed * highlight_b, matrix_rows, channel_map);
 	parse_patterns(writer);
+
+	mml_output += "\n";
+
+	// write initial commands
+	std::string init_commands = "";
+	uint32_t fm3_mask = 0x0001;
+	for(unsigned int channel = 0; channel < channel_count; channel++)
+	{
+		mml_output += channel_map[channel]; //'A' + channel;
+		if(channel == 0)
+		{
+			init_commands += stringf("%c t%d\n", channel_map[channel], 60 * rate / highlight_a / speed);
+		}
+		if(channel_type[channel] == 'S')
+		{
+			init_commands += stringf("%c 'fm3 %04x'\n", channel_map[channel], fm3_mask);
+			fm3_mask <<= 4;
+		}
+	}
+	mml_output += stringf(" C%d\n", whole_len) + init_commands;
 
 	mml_output += writer.output_all();
 }
@@ -343,6 +380,19 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 					{
 						case -1:
 							break;
+						case 0x08: //panning
+							printf("effect %02x%02x\n", effect.first, effect.second);
+							out_row.mml += stringf("p%d", (effect.second & 0x01) | ((effect.second & 0x10) >> 3));
+							break;
+						case 0x20: //noise mode
+							printf("effect %02x%02x\n", effect.first, effect.second);
+							if(effect.second == 0x11)
+								out_row.mml += "'mode 1'";
+							else if(effect.second == 0x10)
+								out_row.mml += "'mode 2'";
+							else
+								out_row.mml += "'mode 0'";
+							break;
 						default:
 							writer.patterns[pattern].channels[channel].optimizable = false;
 							break;
@@ -367,9 +417,9 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 
 //================
 
-Pattern_Mml_Writer::Pattern_Mml_Writer(int initial_whole_len, int number_of_patterns, std::string& initial_channel_map)
+Pattern_Mml_Writer::Pattern_Mml_Writer(int initial_whole_len, int initial_measure_len, int number_of_patterns, std::string& initial_channel_map)
 	: whole_len(initial_whole_len)
-	, measure_len(initial_whole_len)
+	, measure_len(initial_measure_len)
 	, channel_map(initial_channel_map)
 {
 	patterns.resize(number_of_patterns);
@@ -381,6 +431,11 @@ Pattern_Mml_Writer::Pattern_Mml_Writer(int initial_whole_len, int number_of_patt
 	}
 	printf("whole_len = %d\n",whole_len);
 	printf("smallest_len = %d\n",smallest_len);
+
+	if(whole_len != measure_len)
+	{
+		printf("Warning: time signatures other than 4/4 are not supported yet...\n");
+	}
 
 #if 0 // move this to unittests
 	std::cout << "192 = " << convert_length(192, 0, 16, '^') << "\n";
@@ -404,13 +459,6 @@ Pattern_Mml_Writer::Pattern_Mml_Writer(int initial_whole_len, int number_of_patt
 std::string Pattern_Mml_Writer::output_all()
 {
 	std::string output;
-
-	// initial tempo
-	for(unsigned int channel = 0; channel < patterns[0].channels.size(); channel++)
-	{
-		output += channel_map[channel]; //'A' + channel;
-	}
-	output += stringf(" C%d\n", whole_len);
 
 	// patterns
 	for(unsigned int pattern = 0; pattern < patterns.size(); pattern++)

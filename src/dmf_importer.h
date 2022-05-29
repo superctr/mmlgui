@@ -26,12 +26,16 @@ class Dmf_Importer
 		std::string mml_output;
 		std::vector<uint8_t> data;
 
+		uint8_t system;
+
 		uint8_t channel_count;
 		uint8_t pattern_rows;
 		uint8_t matrix_rows;
 		uint8_t instrument_count;
 
+		uint32_t rate;
 		uint8_t speed;
+		uint8_t highlight_a;
 		uint8_t highlight_b;
 
 		std::string channel_map;
@@ -81,7 +85,7 @@ class Pattern_Mml_Writer
 			std::vector<Channel> channels;
 		};
 
-		Pattern_Mml_Writer(int initial_whole_len, int number_of_patterns, std::string& initial_channel_map);
+		Pattern_Mml_Writer(int initial_whole_len, int initial_measure_len, int number_of_patterns, std::string& initial_channel_map);
 		std::string output_all();
 		std::string output_line(int pattern, int channel, int default_length);
 		std::string convert_length(int length, int starting_time, int default_length, char tie_char);
