@@ -133,10 +133,8 @@ void Dmf_Importer::parse()
 
 	// Get timebase and tempo A
 	tmp8 = 1 + *dmfptr++;
-	speed = tmp8 * *dmfptr++;
-
-	// Skip tempo 2
-	dmfptr ++;
+	speed_1 = tmp8 * *dmfptr++;
+	speed_2 = tmp8 * *dmfptr++;
 
 	// custom rate (this Hz a lot)
 	rate = (*dmfptr++) ? 60 : 50;
@@ -219,8 +217,8 @@ void Dmf_Importer::parse()
 	}
 
 	// Parse patterns
-	uint32_t whole_len = 4 * speed * highlight_a;
-	Pattern_Mml_Writer writer(whole_len, speed * highlight_b, matrix_rows, channel_map);
+	uint32_t whole_len = 4 * (speed_1 + speed_2) * highlight_a / 2;
+	Pattern_Mml_Writer writer(whole_len, (speed_1 + speed_2) * highlight_b / 2, matrix_rows, channel_map);
 	parse_patterns(writer);
 
 	mml_output += "\n";
@@ -233,7 +231,8 @@ void Dmf_Importer::parse()
 		mml_output += channel_map[channel]; //'A' + channel;
 		if(channel == 0)
 		{
-			init_commands += stringf("%c t%d\n", channel_map[channel], 60 * rate / highlight_a / speed);
+			printf("speed 1 = %d, speed 2 = %d\n",speed_1,speed_2);
+			init_commands += stringf("%c t%d\n", channel_map[channel], 120 * rate / highlight_a / (speed_1 + speed_2));
 		}
 		if(channel_type[channel] == 'S')
 		{
@@ -315,9 +314,8 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 	int pattern = 0;
 	int ticks = 0;
 	int row = 0;
-	int speed = this->speed;
-
-	printf("speed %d\n", speed);
+	int speed_1 = this->speed_1;
+	int speed_2 = this->speed_2;
 
 	std::vector<int> last_was_note(channel_count, 0);
 	std::vector<int> last_instrument(channel_count, -1);
@@ -364,7 +362,6 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 					last_was_note[channel] = true;
 				}
 
-				//TODO: PSG volume
 				if(in_row.volume != -1)
 				{
 					insert_event = true;
@@ -380,6 +377,12 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 					{
 						case -1:
 							break;
+						case 0x09: //speed 1
+							speed_1 = effect.second;
+							break;
+						case 0x0f: //speed 2
+							speed_2 = effect.second;
+							break;
 						case 0xEC: //note cut
 							writer.patterns[pattern].channels[channel].rows[ticks + effect.second] = {RowType::REST, 0, 0, ""};
 							last_was_note[channel] = false;
@@ -388,15 +391,13 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 							delay = effect.second; // deflemask probably only delays the note and not other stuff but whatev
 							break;
 						case 0x03: //tone portamento (incomplete)
-							if(out_row.type == RowType::NOTE)
+							if(out_row.type == RowType::NOTE && effect.second)
 								out_row.type = RowType::SLUR;
 							break;
 						case 0x08: //panning
-							printf("effect %02x%02x\n", effect.first, effect.second);
 							out_row.mml += stringf("p%d", (effect.second & 0x01) | ((effect.second & 0x10) >> 3));
 							break;
 						case 0x20: //noise mode
-							printf("effect %02x%02x\n", effect.first, effect.second);
 							if(effect.second == 0x11)
 								out_row.mml += "'mode 1'";
 							else if(effect.second == 0x10)
@@ -415,7 +416,7 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 					writer.patterns[pattern].channels[channel].rows[ticks + delay] = out_row;
 				}
 			}
-			ticks += speed;
+			ticks += (row & 1) ? speed_2 : speed_1;
 		}
 
 		writer.patterns[pattern].length = ticks;

@@ -34,7 +34,8 @@ class Dmf_Importer
 		uint8_t instrument_count;
 
 		uint32_t rate;
-		uint8_t speed;
+		uint8_t speed_1;
+		uint8_t speed_2;
 		uint8_t highlight_a;
 		uint8_t highlight_b;
 
