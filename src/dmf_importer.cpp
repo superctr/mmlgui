@@ -231,7 +231,6 @@ void Dmf_Importer::parse()
 		mml_output += channel_map[channel]; //'A' + channel;
 		if(channel == 0)
 		{
-			printf("speed 1 = %d, speed 2 = %d\n",speed_1,speed_2);
 			init_commands += stringf("%c t%d\n", channel_map[channel], 120 * rate / highlight_a / (speed_1 + speed_2));
 		}
 		if(channel_type[channel] == 'S')
@@ -391,6 +390,8 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 							delay = effect.second; // deflemask probably only delays the note and not other stuff but whatev
 							break;
 						case 0x03: //tone portamento (incomplete)
+							// Note: Actual pitch slides not supported. This just adds a slur command
+							// Currently unimplemented DM behavior: 3xx after a key off will ignore the 3xx effect
 							if(out_row.type == RowType::NOTE && effect.second)
 								out_row.type = RowType::SLUR;
 							break;
