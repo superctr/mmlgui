@@ -10,3 +10,6 @@
 [submodule "ctrmml"]
 	path = ctrmml
 	url = https://github.com/superctr/ctrmml
+[submodule "libvgm"]
+	path = libvgm
+	url = https://github.com/ValleyBell/libvgm
