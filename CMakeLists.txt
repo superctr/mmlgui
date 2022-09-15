@@ -7,6 +7,19 @@ find_package(OpenGL REQUIRED)
 pkg_check_modules(GLFW3 REQUIRED glfw3)
 pkg_check_modules(CPPUNIT cppunit)
 
+if(MINGW)
+	option(LINK_STATIC_LIBS "link with static runtime libraries (MinGW only)" ON)
+	if(LINK_STATIC_LIBS)
+		set(CMAKE_FIND_LIBRARY_SUFFIXES .a ${CMAKE_FIND_LIBRARY_SUFFIXES})
+		set(CMAKE_CXX_STANDARD_LIBRARIES "-static-libgcc -static-libstdc++ -lwsock32 -lws2_32 ${CMAKE_CXX_STANDARD_LIBRARIES}")
+		#This gets already set by libvgm...
+		#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive")
+		set(GLFW3_LIBRARIES -static ${GLFW3_STATIC_LIBRARIES} -dynamic)
+	endif()
+else()
+	option(LINK_STATIC_LIBS "link with static runtime libraries (MinGW only)" OFF)
+endif()
+
 add_subdirectory(ctrmml)
 add_subdirectory(libvgm)
 
