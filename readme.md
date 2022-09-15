@@ -31,7 +31,37 @@ See [ctrmml/mml_ref.md](ctrmml/mml_ref.md) for an MML reference.
 
 ![Screenshot](doc/screenshot.png)
 
-## Compiling
+## Compiling using CMake
+
+### Prerequisites
+First, make sure all submodules have been cloned. If you didn't clone this repository
+with `git clone --recurse-submodules`, do this:
+
+	git submodule update --init
+
+Make sure you have the following packages installed: (this list might not be 100% correct)
+
+	glfw
+
+You also need to have `pkg-config` (or a compatible equivalent such as `pkgconf`) installed.
+
+Notice that there is no need to install libvgm for CMake builds, as it is built by the mmlgui target.
+
+#### Building
+
+	mkdir build && cd build
+	cmake ..
+	cmake --build .
+	./mmlgui
+
+To build a debug or release version, add `-DCMAKE_BUILD_TYPE=Debug` or `-DCMAKE_BUILD_TYPE=Release` to the first
+cmake call.
+
+Note that once cmake has setup the build environment, it is only needed to call `cmake --build .` for successive builds.
+
+## Compiling using the makefile
+The makefile is currently used for static linked builds for Windows as well as for address sanitizer builds.
+Once these features are integrated in the CMake build, the makefiles will most likely be removed.
 
 ### Prerequisites
 First, make sure all submodules have been cloned. If you didn't clone this repository
