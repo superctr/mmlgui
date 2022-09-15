@@ -5,9 +5,15 @@
 #include <map>
 #include <vector>
 
+#if defined(LOCAL_LIBVGM)
+#include "emu/EmuStructs.h"
+#include "emu/SoundEmu.h"
+#include "emu/Resampler.h"
+#else
 #include <vgm/emu/EmuStructs.h>
 #include <vgm/emu/SoundEmu.h>
 #include <vgm/emu/Resampler.h>
+#endif
 
 #include "audio_manager.h"
 #include "vgm.h"

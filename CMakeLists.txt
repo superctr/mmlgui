@@ -47,6 +47,7 @@ add_executable(mmlgui
 	src/miniz.c)
 
 target_link_libraries(mmlgui PRIVATE ctrmml gui vgm-utils vgm-audio vgm-emu)
+target_compile_definitions(mmlgui PRIVATE -DLOCAL_LIBVGM)
 
 if(CPPUNIT_FOUND)
 	add_executable(mmlgui_unittest

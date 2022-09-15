@@ -6,8 +6,13 @@
 
 #include <cstring>
 
+#if defined(LOCAL_LIBVGM)
+#include "audio/AudioStream.h"
+#include "audio/AudioStream_SpcDrvFuns.h"
+#else
 #include <vgm/audio/AudioStream.h>
 #include <vgm/audio/AudioStream_SpcDrvFuns.h>
+#endif
 
 //! First time initialization
 Audio_Manager::Audio_Manager()

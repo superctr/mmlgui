@@ -2,11 +2,19 @@
 #include "platform/md.h"
 #include "input.h"
 
+#if defined(LOCAL_LIBVGM)
+#include "emu/EmuStructs.h"
+#include "emu/SoundEmu.h"
+#include "emu/SoundDevs.h"
+#include "emu/EmuCores.h"
+#include "emu/cores/sn764intf.h"
+#else
 #include <vgm/emu/EmuStructs.h>
 #include <vgm/emu/SoundEmu.h>
 #include <vgm/emu/SoundDevs.h>
 #include <vgm/emu/EmuCores.h>
 #include <vgm/emu/cores/sn764intf.h>
+#endif
 
 #include <cstdlib>
 #include <stdexcept>

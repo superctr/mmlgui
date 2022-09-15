@@ -7,8 +7,13 @@
 #include <string>
 #include <mutex>
 
+#if defined(LOCAL_LIBVGM)
+#include "audio/AudioStream.h"
+#include "emu/Resampler.h"
+#else
 #include <vgm/audio/AudioStream.h>
 #include <vgm/emu/Resampler.h>
+#endif
 
 //! Abstract class for audio stream control
 class Audio_Stream
