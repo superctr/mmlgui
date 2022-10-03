@@ -400,7 +400,7 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 							if(!next_pattern_row)
 								next_pattern_row = 1;
 							break;
-						case 0x0c: // skip to next row
+						case 0x0d: // skip to next row
 							next_pattern_row = effect.second + 1;
 							break;
 						case 0x0f: //speed 2
