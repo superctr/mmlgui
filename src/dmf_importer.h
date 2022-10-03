@@ -14,7 +14,7 @@ class Dmf_Importer
 		Dmf_Importer(const char* filename);
 
 		std::string get_error();
-		std::string get_mml();
+		std::string get_mml(bool patches, bool patterns);
 
 	private:
 		void parse();
@@ -23,6 +23,7 @@ class Dmf_Importer
 		void parse_patterns(Pattern_Mml_Writer& writer);
 
 		std::string error_output;
+		std::string patch_output;
 		std::string mml_output;
 		std::vector<uint8_t> data;
 

@@ -44,12 +44,17 @@ enum Flags
 	RECOMPILE       = 1<<8,
 	EXPORT			= 1<<9,
 	IMPORT			= 1<<10,
+	IMPORT_SETTINGS = 1<<11,
+	SAVE_SAMPLES	= 1<<12,
 };
 
 Editor_Window::Editor_Window()
 	: editor()
 	, filename(default_filename)
 	, flag(RECOMPILE)
+	, import_patches(true)
+	, import_patterns(true)
+	, save_samples(false)
 	, line_pos(0)
 	, cursor_pos(0)
 {
@@ -94,7 +99,7 @@ void Editor_Window::display()
 			if (ImGui::MenuItem("Save As...", "Ctrl+Alt+S"))
 				set_flag(SAVE|SAVE_AS|DIALOG);
 			ImGui::Separator();
-			if (ImGui::MenuItem("Import patches from DMF...", nullptr, nullptr, !editor.IsReadOnly()))
+			if (ImGui::MenuItem("Import DMF...", nullptr, nullptr, !editor.IsReadOnly()))
 				set_flag(IMPORT|DIALOG);
 			show_export_menu();
 			ImGui::Separator();
@@ -416,7 +421,7 @@ void Editor_Window::handle_file_io()
 		else
 		{
 			set_flag(RECOMPILE);
-			clear_flag(MODIFIED|FILENAME_SET|NEW|OPEN|SAVE|DIALOG|IGNORE_WARNING);
+			clear_flag(MODIFIED|FILENAME_SET|NEW|OPEN|SAVE|SAVE_SAMPLES|DIALOG|IGNORE_WARNING);
 			filename = default_filename;
 			editor.SetText("");
 			editor.MoveTop(false);
@@ -463,17 +468,17 @@ void Editor_Window::handle_file_io()
 				if(save_file(fs.getChosenPath()))
 					set_flag(DIALOG);						// File couldn't be saved
 				else
-					clear_flag(SAVE|SAVE_AS);
+					clear_flag(SAVE|SAVE_AS|SAVE_SAMPLES);
 			}
 			else if(fs.hasUserJustCancelledDialog())
 			{
-				clear_flag(SAVE|SAVE_AS);
+				clear_flag(SAVE|SAVE_AS|SAVE_SAMPLES);
 			}
 		}
 		else
 		{
 			// TODO: show a message if file couldn't be saved ...
-			clear_flag(DIALOG|SAVE);
+			clear_flag(DIALOG|SAVE|SAVE_SAMPLES);
 			if(save_file(filename.c_str()))
 				player_error = "File couldn't be saved.";
 		}
@@ -494,6 +499,7 @@ void Editor_Window::handle_file_io()
 			clear_flag(EXPORT);
 		}
 	}
+	// import dialog requested
 	else if(test_flag(IMPORT) && !modal_open)
 	{
 		modal_open = 1;
@@ -501,13 +507,18 @@ void Editor_Window::handle_file_io()
 		clear_flag(DIALOG);
 		if(strlen(fs.getChosenPath()) > 0)
 		{
-			import_file(fs.getChosenPath());
+			prepare_import_file(fs.getChosenPath());
 			clear_flag(IMPORT);
 		}
 		else if(fs.hasUserJustCancelledDialog())
 		{
 			clear_flag(IMPORT);
 		}
+	}
+	// import settings requested
+	else if(test_flag(IMPORT_SETTINGS) && !modal_open)
+	{
+		show_import_settings();
 	}
 }
 
@@ -530,18 +541,83 @@ int Editor_Window::load_file(const char* fn)
 	return -1;
 }
 
-int Editor_Window::import_file(const char* fn)
+int Editor_Window::prepare_import_file(const char* fn)
 {
-	auto t = Dmf_Importer(fn);
-	player_error += t.get_error();
+	dmf_importer = std::make_shared<Dmf_Importer>(fn);
+	//auto t = Dmf_Importer(fn);
+	player_error += dmf_importer->get_error();
 	if (!player_error.size())
 	{
-		clear_flag(MODIFIED);
-		set_flag(FILENAME_SET|RECOMPILE);
-		editor.InsertText(t.get_mml());
+		set_flag(IMPORT_SETTINGS);
 		return 0;
 	}
 	return -1;
+}
+
+int Editor_Window::import_file()
+{
+	// Reset file contents
+	if(import_patterns)
+	{
+		set_flag(RECOMPILE);
+		clear_flag(MODIFIED|FILENAME_SET|NEW|OPEN|SAVE|SAVE_SAMPLES|DIALOG|IGNORE_WARNING);
+		filename = default_filename;
+		editor.SetText("");
+		editor.MoveTop(false);
+
+		song_manager->reset_mute();
+		song_manager->stop();
+	}
+	editor.InsertText(dmf_importer->get_mml(import_patches, import_patterns));
+	set_flag(MODIFIED|RECOMPILE);
+	return -1;
+}
+
+void Editor_Window::show_import_settings()
+{
+	modal_open = 1;
+	std::string modal_id;
+	modal_id = get_display_filename() + "###modal";
+	if (!ImGui::IsPopupOpen(modal_id.c_str()))
+		ImGui::OpenPopup(modal_id.c_str());
+	if(ImGui::BeginPopupModal(modal_id.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		ImGui::Checkbox("Import patches", &import_patches);
+		ImGui::Checkbox("Import patterns", &import_patterns);
+		if(ImGui::IsItemHovered())
+			ImGui::SetTooltip("Will overwrite existing data");
+		//ImGui::Checkbox("Extract samples", &save_samples);
+
+		if(test_flag(MODIFIED) && import_patterns)
+		{
+			ImGui::Separator();
+			ImGui::Text("Warning: You have unsaved changes which will be lost.");
+		}
+
+		if(save_samples)
+		{
+			ImGui::Separator();
+			ImGui::Text("To extract samples, the song must be saved after the import.");
+			ImGui::Text("Samples will be saved in the same directory as the song.");
+		}
+
+		ImGui::Separator();
+
+		if (ImGui::Button("Import", ImVec2(120, 0)))
+		{
+			clear_flag(IMPORT_SETTINGS);
+			ImGui::CloseCurrentPopup();
+			import_file();
+		}
+		ImGui::SetItemDefaultFocus();
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel", ImVec2(120, 0)))
+		{
+			clear_flag(IMPORT_SETTINGS);
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
 }
 
 int Editor_Window::save_file(const char* fn)

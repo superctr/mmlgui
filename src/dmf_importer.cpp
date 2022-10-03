@@ -52,9 +52,9 @@ std::string Dmf_Importer::get_error()
 	return error_output;
 }
 
-std::string Dmf_Importer::get_mml()
+std::string Dmf_Importer::get_mml(bool patches, bool patterns)
 {
-	return mml_output;
+	return (patches ? patch_output : "") + (patterns ? mml_output : "");
 }
 
 static inline uint32_t read_le32(uint8_t* data)
@@ -262,11 +262,11 @@ uint8_t* Dmf_Importer::parse_fm_instrument(uint8_t* ptr, int id, std::string str
 	uint8_t op_table[4] = {4, 28, 16, 40};
 	uint8_t dt_table[7] = {7, 6, 5, 0, 1, 2, 3};
 
-	mml_output += stringf("@%d fm %d %d ; %s\n", id, ALG, FB, str.c_str());
+	patch_output += stringf("@%d fm %d %d ; %s\n", id, ALG, FB, str.c_str());
 	for(int opr=0; opr<4; opr++)
 	{
 		uint8_t op = op_table[opr];
-		mml_output += stringf(" %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d \n",
+		patch_output += stringf(" %3d %3d %3d %3d %3d %3d %3d %3d %3d %3d \n",
 								AR, DR, SR, RR, SL, TL, KS, ML, DT, SSG);
 	}
 	return ptr + 52;

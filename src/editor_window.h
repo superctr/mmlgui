@@ -10,6 +10,8 @@
 #include "window.h"
 #include "song_manager.h"
 
+class Dmf_Importer;
+
 class Editor_Window : public Window
 {
 	public:
@@ -37,7 +39,8 @@ class Editor_Window : public Window
 		int load_file(const char* fn);
 		int save_file(const char* fn);
 		void export_file(const char* fn);
-		int import_file(const char* fn);
+		int prepare_import_file(const char* fn);
+		int import_file();
 
 		std::string get_display_filename() const;
 		std::string get_export_filename() const;
@@ -45,6 +48,7 @@ class Editor_Window : public Window
 		void get_compile_result();
 		void show_track_positions();
 
+		void show_import_settings();
 		void show_export_menu();
 
 		inline void set_flag(uint32_t data) { flag |= data; };
@@ -58,6 +62,12 @@ class Editor_Window : public Window
 		ImGuiFs::Dialog fs;
 		std::string filename;
 		uint32_t flag;
+
+		// Import state
+		std::shared_ptr<Dmf_Importer> dmf_importer;
+		bool import_patches;
+		bool import_patterns;
+		bool save_samples;
 
 		// Export state
 		std::string export_filter;
