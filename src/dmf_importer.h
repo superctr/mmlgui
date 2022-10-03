@@ -34,6 +34,8 @@ class Dmf_Importer
 		uint8_t matrix_rows;
 		uint8_t instrument_count;
 
+		int loop_position;
+
 		uint32_t rate;
 		uint8_t speed_1;
 		uint8_t speed_2;

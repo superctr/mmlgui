@@ -186,6 +186,8 @@ void Dmf_Importer::parse()
 		dmfptr += 4 + wtsize * 4;
 	}
 
+	loop_position = -1;
+
 	// Read channels
 	channel_pattern_rows.resize(channel_count);
 	for(int ch = 0; ch < channel_count; ch++)
@@ -208,6 +210,9 @@ void Dmf_Importer::parse()
 					int16_t effect_value = read_le16(dmfptr+2);
 					in_row.effects.push_back({effect_code,effect_value});
 					dmfptr += 4;
+					// Special case - handle loop command here
+					if(effect_code == 0x0b)
+						loop_position = effect_value;
 				}
 				in_row.instrument = read_le16(dmfptr);
 				dmfptr += 2;
@@ -313,6 +318,7 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 	int pattern = 0;
 	int ticks = 0;
 	int row = 0;
+	int next_pattern_row = 0;
 	int speed_1 = this->speed_1;
 	int speed_2 = this->speed_2;
 
@@ -321,6 +327,7 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 
 	while(pattern < matrix_rows)
 	{
+		next_pattern_row = 0;
 		for(int channel = 0; channel < channel_count; channel++)
 		{
 			RowType type = last_was_note[channel] ? RowType::TIE : RowType::REST;
@@ -329,7 +336,7 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 			writer.patterns[pattern].channels[channel].rows[0] = {type, 0, 0, ""};
 		}
 
-		for(row = 0; row < pattern_rows; row ++)
+		for(; !next_pattern_row && row < pattern_rows; row ++)
 		{
 			for(int channel = 0; channel < channel_count; channel++)
 			{
@@ -340,6 +347,16 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 
 				Pattern_Mml_Writer::Row out_row;
 				out_row.type = last_was_note[channel] ? RowType::TIE : RowType::REST;
+
+				// There are probably some issues with the way loops are handled here.
+				// If the loop starts at any other row than 0, this will be missed
+				// Also the loop will in some cases cut the note played at the end of the song
+				// if it is supposed to extend into the loop start pattern.
+				if(loop_position == pattern && row == 0)
+				{
+					out_row.mml += "L ";
+					last_instrument[channel] = -1;
+				}
 
 				if(in_row.note == 100)
 				{
@@ -378,6 +395,13 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 							break;
 						case 0x09: //speed 1
 							speed_1 = effect.second;
+							break;
+						case 0x0b: // loop
+							if(!next_pattern_row)
+								next_pattern_row = 1;
+							break;
+						case 0x0c: // skip to next row
+							next_pattern_row = effect.second + 1;
 							break;
 						case 0x0f: //speed 2
 							speed_2 = effect.second;
@@ -422,7 +446,10 @@ void Dmf_Importer::parse_patterns(Pattern_Mml_Writer& writer)
 
 		writer.patterns[pattern].length = ticks;
 		ticks = 0;
-		row = 0;
+		if(next_pattern_row)
+			row = next_pattern_row - 1;
+		else
+			row = 0;
 		pattern ++;
 	}
 
