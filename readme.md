@@ -27,7 +27,7 @@ For Windows (or Wine) users, you can download the latest automatic build from [h
 Feel free to join the [Discord server](https://discord.com/invite/BPwM6PJv7T)
 if you have any questions or feedback.
 
-See [ctrmml/mml_ref.md](ctrmml/mml_ref.md) for an MML reference.
+See [ctrmml/mml_ref.md](https://github.com/superctr/ctrmml/blob/master/mml_ref.md) for an MML reference.
 
 ![Screenshot](doc/screenshot.png)
 
