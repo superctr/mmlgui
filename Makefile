@@ -3,6 +3,7 @@ OBJ = obj
 BIN = bin
 
 CFLAGS = -Wall
+CXXFLAGS = -std=c++17
 LDFLAGS =
 
 ifneq ($(RELEASE),1)
@@ -29,7 +30,7 @@ include libvgm.mak
 
 $(OBJ)/%.o: $(SRC)/%.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CFLAGS) -MMD -c $< -o $@
+	$(CXX) $(CFLAGS) $(CXXFLAGS) -MMD -c $< -o $@
 
 $(OBJ)/%.o: $(SRC)/%.c
 	@mkdir -p $(@D)
