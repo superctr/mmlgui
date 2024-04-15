@@ -37,6 +37,7 @@ static bool debug_imgui_metrics = false;
 #endif
 static bool debug_state_window = false;
 static bool debug_audio_window = false;
+static bool debug_ui_window = false;
 
 static void debug_menu()
 {
@@ -48,6 +49,7 @@ static void debug_menu()
 #endif
 	ImGui::MenuItem("Select audio device", NULL, &debug_audio_window);
 	ImGui::MenuItem("Display dump state", NULL, &debug_state_window);
+	ImGui::MenuItem("UI settings", NULL, &debug_ui_window);
 	if (ImGui::MenuItem("Quit"))
 	{
 		// if ctrl+shift was held, stimulate a segfault
@@ -126,6 +128,14 @@ static void debug_window()
 			}
 			ImGui::ListBoxFooter();
 		}
+		ImGui::End();
+	}
+	if(debug_ui_window)
+	{
+		ImGui::Begin("UI settings", &debug_ui_window, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+
+		ImGui::DragFloat("UI scaling", &ImGui::GetIO().FontGlobalScale, 0.005f, 0.3f, 2.0f, "%.2f");
+
 		ImGui::End();
 	}
 }

@@ -106,6 +106,7 @@ int main(int argc, char* argv[])
 {
 	int driver_id = -1;
 	int device_id = -1;
+	float ui_scale = 1.0f;
 	int carg = 1;
 	while(carg < argc)
 	{
@@ -116,6 +117,10 @@ int main(int argc, char* argv[])
 		if(!std::strcmp(argv[carg], "--device-id") && (argc > carg))
 		{
 			device_id = strtol(argv[++carg], NULL, 0);
+		}
+		if(!std::strcmp(argv[carg], "--ui-scale") && (argc > carg))
+		{
+			ui_scale = strtof(argv[++carg], NULL);
 		}
 		carg++;
 	}
@@ -199,7 +204,7 @@ int main(int argc, char* argv[])
 	// Setup scaling
 	float scale;
 	glfwGetWindowContentScale(window, &scale, NULL);
-	restyle_with_scale(scale);
+	restyle_with_scale(scale * ui_scale);
 
 	glfwSetWindowContentScaleCallback(window, [](GLFWwindow* window, float xscale, float yscale) {
 		restyle_with_scale(xscale);
