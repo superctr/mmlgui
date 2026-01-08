@@ -2,6 +2,7 @@
 #define WINDOW_H
 
 #include "window_type.h"
+#include <cstdint>
 #include <vector>
 #include <memory>
 #include <string>
