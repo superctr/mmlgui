@@ -23,7 +23,7 @@ endif
 ifeq ($(UNAME_S), Darwin) #APPLE
 	ECHO_MESSAGE = "Mac OS X"
 	LDFLAGS_IMGUI += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo
-	LDFLAGS_IMGUI += -L/usr/local/lib -L/opt/local/lib
+	LDFLAGS_IMGUI += -L/usr/local/lib
 	#LDFLAGS_IMGUI += -lglfw3
 	LDFLAGS_IMGUI += -lglfw
 
@@ -52,11 +52,11 @@ IMGUI_CTE_OBJS = \
 
 $(IMGUI_CTE_OBJ)/%.o: $(IMGUI_CTE_SRC)/%.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CFLAGS) -MMD -c $< -o $@
+	$(CXX) $(CFLAGS) $(CXXFLAGS) -MMD -c $< -o $@
 
 $(IMGUI_OBJ)/%.o: $(IMGUI_SRC)/%.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CFLAGS) -MMD -c $< -o $@
+	$(CXX) $(CFLAGS) $(CXXFLAGS) -MMD -c $< -o $@
 
 $(IMGUI_OBJ)/%.o: $(IMGUI_SRC)/%.c
 	@mkdir -p $(@D)
