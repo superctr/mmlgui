@@ -21,6 +21,11 @@ else()
 endif()
 
 add_subdirectory(ctrmml)
+
+# These options are required by the libvgm submodule.
+# Currently it cannot be updated because this results in no audio.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+set(CMAKE_C_STANDARD 11)
 add_subdirectory(libvgm)
 
 add_library(gui
