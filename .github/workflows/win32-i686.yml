@@ -27,7 +27,7 @@ jobs:
           git checkout 5fe3883a
           mkdir build
           cd build
-          cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw32 -D CMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake .. -G "MSYS Makefiles" -D AUDIODRV_LIBAO=OFF -D CMAKE_INSTALL_PREFIX=/mingw32 -D CMAKE_POLICY_VERSION_MINIMUM=3.5 -D CMAKE_C_STANDARD=11
           make
           make install
       - name: init-submodules
